@@ -543,7 +543,7 @@ public class LoanProduct extends AbstractPersistable<Long> {
         this.canDefineInstallmentAmount = canDefineEmiAmount;
         this.installmentAmountInMultiplesOf = installmentAmountInMultiplesOf;
     }
-
+   
     public MonetaryCurrency getCurrency() {
         return this.loanProductRelatedDetail.getCurrency();
     }
@@ -581,6 +581,10 @@ public class LoanProduct extends AbstractPersistable<Long> {
 
     public Integer getAccountingType() {
         return this.accountingRule;
+    }
+    
+    public List<Charge> getLoanProductCharges(){
+        return this.charges;
     }
 
     public Map<String, Object> update(final JsonCommand command, final AprCalculator aprCalculator) {

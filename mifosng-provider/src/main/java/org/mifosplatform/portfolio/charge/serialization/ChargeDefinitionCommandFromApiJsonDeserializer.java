@@ -27,6 +27,7 @@ import org.mifosplatform.portfolio.charge.domain.ChargeAppliesTo;
 import org.mifosplatform.portfolio.charge.domain.ChargeCalculationType;
 import org.mifosplatform.portfolio.charge.domain.ChargePaymentMode;
 import org.mifosplatform.portfolio.charge.domain.ChargeTimeType;
+import org.mifosplatform.portfolio.charge.domain.DisbursementChargeType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -41,7 +42,7 @@ public final class ChargeDefinitionCommandFromApiJsonDeserializer {
      */
     private final Set<String> supportedParameters = new HashSet<>(Arrays.asList("name", "amount", "locale", "currencyCode",
             "currencyOptions", "chargeAppliesTo", "chargeTimeType", "chargeCalculationType", "chargeCalculationTypeOptions", "penalty",
-            "active", "chargePaymentMode", "feeOnMonthDay", "feeInterval", "monthDayFormat", "minCap", "maxCap", "feeFrequency"));
+            "active", "chargePaymentMode", "feeOnMonthDay", "feeInterval", "monthDayFormat", "minCap", "maxCap", "feeFrequency","disbursementChargeType"));
 
     private final FromJsonHelper fromApiJsonHelper;
 
@@ -79,7 +80,7 @@ public final class ChargeDefinitionCommandFromApiJsonDeserializer {
         if (feeFrequency != null) {
             baseDataValidator.reset().parameter("feeInterval").value(feeInterval).notNull();
         }
-
+        
         final ChargeAppliesTo appliesTo = ChargeAppliesTo.fromInt(chargeAppliesTo);
         if (appliesTo.isLoanCharge()) {
             // loan applicable validation
@@ -101,6 +102,13 @@ public final class ChargeDefinitionCommandFromApiJsonDeserializer {
             if (chargeCalculationType != null) {
                 baseDataValidator.reset().parameter("chargeCalculationType").value(chargeCalculationType)
                         .isOneOfTheseValues(ChargeCalculationType.validValuesForLoan());
+            }
+            
+            final Integer disbursementChargeType = this.fromApiJsonHelper.extractIntegerSansLocaleNamed("disbursementChargeType", element);
+            baseDataValidator.reset().parameter("disbursementChargeType").value(disbursementChargeType).ignoreIfNull();
+            if(disbursementChargeType != null){
+                baseDataValidator.reset().parameter("disbursementChargeType").value(disbursementChargeType)
+                .isOneOfTheseValues(DisbursementChargeType.validValues());
             }
 
         } else if (appliesTo.isSavingsCharge()) {
@@ -238,7 +246,7 @@ public final class ChargeDefinitionCommandFromApiJsonDeserializer {
         if (this.fromApiJsonHelper.parameterExists("chargeCalculationType", element)) {
             final Integer chargeCalculationType = this.fromApiJsonHelper.extractIntegerNamed("chargeCalculationType", element,
                     Locale.getDefault());
-            baseDataValidator.reset().parameter("chargeCalculationType").value(chargeCalculationType).notNull().inMinMaxRange(1, 4);
+            baseDataValidator.reset().parameter("chargeCalculationType").value(chargeCalculationType).notNull().inMinMaxRange(1, 6);
         }
 
         if (this.fromApiJsonHelper.parameterExists("chargePaymentMode", element)) {

@@ -1011,7 +1011,7 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
                         if (fromDate.equals(this.disbursement.disbursementDate()) && data.disbursementDate().equals(fromDate)) {
                             principal = principal.add(data.amount());
                             final LoanSchedulePeriodData periodData = LoanSchedulePeriodData.disbursementOnlyPeriod(
-                                    data.disbursementDate(), data.amount(), this.totalFeeChargesDueAtDisbursement, data.isDisbursed());
+                                    data.disbursementDate(), data.amount(), data.getChargeAmount(), data.isDisbursed());
                             periods.add(periodData);
                             this.outstandingLoanPrincipalBalance = this.outstandingLoanPrincipalBalance.add(data.amount());
                         } else if (data.isDueForDisbursement(fromDate, dueDate)) {
@@ -1019,7 +1019,7 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
                                     || (excludePastUndisbursed && (data.isDisbursed() || !data.disbursementDate().isBefore(LocalDate.now())))) {
                                 principal = principal.add(data.amount());
                                 final LoanSchedulePeriodData periodData = LoanSchedulePeriodData.disbursementOnlyPeriod(
-                                        data.disbursementDate(), data.amount(), BigDecimal.ZERO, data.isDisbursed());
+                                        data.disbursementDate(), data.amount(), data.getChargeAmount(), data.isDisbursed());
                                 periods.add(periodData);
                                 this.outstandingLoanPrincipalBalance = this.outstandingLoanPrincipalBalance.add(data.amount());
                             }
@@ -1429,8 +1429,14 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
     private static final class LoanDisbursementDetailMapper implements RowMapper<DisbursementData> {
 
         public String schema() {
-            return "dd.id as id,dd.expected_disburse_date as expectedDisbursementdate,dd.disbursedon_date as actualDisbursementdate,dd.principal as principal "
-                    + "from m_loan_disbursement_detail dd";
+            
+            return "dd.id as id,dd.expected_disburse_date as expectedDisbursementdate,dd.disbursedon_date as actualDisbursementdate,dd.principal as principal,lc.amount chargeAmount,lc.id loanChargeId " +
+            	     "from m_loan_tranche_disbursement_charge tdc left join m_loan_charge lc on tdc.loan_charge_id = lc.id "
+                    + "left join m_loan_disbursement_detail dd on tdc.disbursement_detail_id = dd.id ";
+
+            
+           /* return "dd.id as id,dd.expected_disburse_date as expectedDisbursementdate,dd.disbursedon_date as actualDisbursementdate,dd.principal as principal "
+                    + "from m_loan_disbursement_detail dd";*/
         }
 
         @Override
@@ -1439,8 +1445,10 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
             final LocalDate expectedDisbursementdate = JdbcSupport.getLocalDate(rs, "expectedDisbursementdate");
             final LocalDate actualDisbursementdate = JdbcSupport.getLocalDate(rs, "actualDisbursementdate");
             final BigDecimal principal = rs.getBigDecimal("principal");
+            final Long loanChargeId = rs.getLong("loanChargeId");
+            final BigDecimal chargeAmount = rs.getBigDecimal("chargeAmount");
 
-            final DisbursementData disbursementData = new DisbursementData(id, expectedDisbursementdate, actualDisbursementdate, principal);
+            final DisbursementData disbursementData = new DisbursementData(id, expectedDisbursementdate, actualDisbursementdate, principal, loanChargeId, chargeAmount);
             return disbursementData;
         }
 

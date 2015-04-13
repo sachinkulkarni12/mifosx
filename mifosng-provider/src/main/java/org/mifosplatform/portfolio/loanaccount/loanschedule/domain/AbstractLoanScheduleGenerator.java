@@ -172,7 +172,7 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
                 loanApplicationTerms.setFixedEmiAmountForPeriod(scheduledDueDate);
 
                 for (Map.Entry<LocalDate, Money> disburseDetail : disburseDetailMap.entrySet()) {
-                    if (disburseDetail.getKey().isAfter(periodStartDate) && !disburseDetail.getKey().isAfter(scheduledDueDate)) {
+                   if (disburseDetail.getKey().isAfter(periodStartDate) && !disburseDetail.getKey().isAfter(scheduledDueDate)) {
                         // validation check for amount not exceeds specified max
                         // amount as per the configuration
                         if (loanApplicationTerms.getMaxOutstandingBalance() != null
@@ -191,9 +191,9 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
                         periods.add(disbursementPeriod);
                         // updates actual outstanding balance with new
                         // disbursement detail
-                        outstandingBalance = outstandingBalance.plus(disburseDetail.getValue());
-                        principalDisbursed = principalDisbursed.plus(disburseDetail.getValue());
-                        loanApplicationTerms.setPrincipal(loanApplicationTerms.getPrincipal().plus(disburseDetail.getValue()));
+                        //outstandingBalance = outstandingBalance.plus(disburseDetail.getValue());
+                        //principalDisbursed = principalDisbursed.plus(disburseDetail.getValue());
+                        //loanApplicationTerms.setPrincipal(disburseDetail.getValue());
                     }
                 }
             }
@@ -1169,6 +1169,26 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
                 chargesDueAtTimeOfDisbursement = chargesDueAtTimeOfDisbursement.add(loanCharge.amount());
             }
         }
+        /*for (final LoanCharge loanCharge : loanCharges) {
+            if (loanCharge.isDueAtDisbursement()) {
+                chargesDueAtTimeOfDisbursement = loanCharge.amount();
+                break;
+            }
+        }*/
+        /*if(loanApplicationTerms.isMultiDisburseLoan()){
+            for (final LoanCharge loanCharge : loanCharges) {
+                if (loanCharge.isDueAtDisbursement()) {
+                    chargesDueAtTimeOfDisbursement = loanCharge.amount();
+                    break;
+                }
+            }
+        }else{
+            for (final LoanCharge loanCharge : loanCharges) {
+                if (loanCharge.isDueAtDisbursement()) {
+                    chargesDueAtTimeOfDisbursement = chargesDueAtTimeOfDisbursement.add(loanCharge.amount());
+                }
+            }
+        }*/
         return chargesDueAtTimeOfDisbursement;
     }
 

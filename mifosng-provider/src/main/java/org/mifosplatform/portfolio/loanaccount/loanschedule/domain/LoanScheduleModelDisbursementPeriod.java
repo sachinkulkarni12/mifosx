@@ -82,7 +82,12 @@ public final class LoanScheduleModelDisbursementPeriod implements LoanScheduleMo
 
     @Override
     public BigDecimal feeChargesDue() {
-        return null;
+        BigDecimal value = null;
+        if (this.chargesDueAtTimeOfDisbursement != null) {
+            value = this.chargesDueAtTimeOfDisbursement;
+        }
+
+        return value;
     }
 
     @Override
