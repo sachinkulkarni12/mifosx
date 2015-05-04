@@ -5,7 +5,7 @@ ALTER TABLE `m_charge`
 CREATE TABLE `m_loan_tranche_disbursement_charge` (
 	`id` BIGINT(20) NOT NULL AUTO_INCREMENT,
 	`loan_charge_id` BIGINT(20) NOT NULL,
-	`disbursement_detail_id` BIGINT(20) NOT NULL,
+	`disbursement_detail_id` BIGINT(20) NULL,
 	PRIMARY KEY (`id`)
 )
 COLLATE='utf8_general_ci'
