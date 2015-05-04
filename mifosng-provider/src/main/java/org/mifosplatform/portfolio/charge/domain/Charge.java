@@ -133,7 +133,10 @@ public class Charge extends AbstractPersistable<Long> {
         this.penalty = penalty;
         this.active = active;
         this.chargePaymentMode = paymentMode == null ? null : paymentMode.getValue();
-        this.disbursementChargeType = disbursementType.getValue();
+        if(disbursementType != null){
+        	this.disbursementChargeType = disbursementType.getValue();
+        }
+        
 
         final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
         final DataValidatorBuilder baseDataValidator = new DataValidatorBuilder(dataValidationErrors).resource("charges");

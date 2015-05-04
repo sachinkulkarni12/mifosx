@@ -1039,9 +1039,16 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
                                         data.disbursementDate(), data.amount(), this.totalFeeChargesDueAtDisbursement, data.isDisbursed());
                                 periods.add(periodData);
                             }else if(chargeDefinition.isPercentageOfDisbursementAmount()){
-                                final LoanSchedulePeriodData periodData = LoanSchedulePeriodData.disbursementOnlyPeriod(
-                                        data.disbursementDate(), data.amount(), data.getChargeAmount(), data.isDisbursed());
-                                periods.add(periodData);
+                            	if(data.getChargeAmount() == null){
+                            		final LoanSchedulePeriodData periodData = LoanSchedulePeriodData.disbursementOnlyPeriod(
+                                            data.disbursementDate(), data.amount(), BigDecimal.ZERO, data.isDisbursed());
+                                    periods.add(periodData);
+                            	}else{
+                            		final LoanSchedulePeriodData periodData = LoanSchedulePeriodData.disbursementOnlyPeriod(
+                                            data.disbursementDate(), data.amount(), data.getChargeAmount(), data.isDisbursed());
+                                    periods.add(periodData);
+                            	}
+                                
                             }
                             this.outstandingLoanPrincipalBalance = this.outstandingLoanPrincipalBalance.add(data.amount());
                         } else if (data.isDueForDisbursement(fromDate, dueDate)) {
@@ -1053,9 +1060,15 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
                                             data.disbursementDate(), data.amount(), BigDecimal.ZERO, data.isDisbursed());
                                     periods.add(periodData);
                                 }else if(chargeDefinition.isPercentageOfDisbursementAmount()){
-                                    final LoanSchedulePeriodData periodData = LoanSchedulePeriodData.disbursementOnlyPeriod(
-                                            data.disbursementDate(), data.amount(), data.getChargeAmount(), data.isDisbursed());
-                                    periods.add(periodData);
+                                	if(data.getChargeAmount() == null){
+                                		final LoanSchedulePeriodData periodData = LoanSchedulePeriodData.disbursementOnlyPeriod(
+                                                data.disbursementDate(), data.amount(), BigDecimal.ZERO, data.isDisbursed());
+                                        periods.add(periodData);
+                                	}else{
+                                		final LoanSchedulePeriodData periodData = LoanSchedulePeriodData.disbursementOnlyPeriod(
+                                                data.disbursementDate(), data.amount(), data.getChargeAmount(), data.isDisbursed());
+                                        periods.add(periodData);
+                                	}
                                 }
                                 this.outstandingLoanPrincipalBalance = this.outstandingLoanPrincipalBalance.add(data.amount());
                             }
@@ -1458,8 +1471,7 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
     @Override
     public Collection<DisbursementData> retrieveLoanDisbursementDetails(final Long loanId) {
         final LoanDisbursementDetailMapper rm = new LoanDisbursementDetailMapper();
-        final String sql = "select " + rm.schema() + " where dd.loan_id=? And lc.is_active = 1 group by tdc.disbursement_detail_id order by dd.expected_disburse_date";
-        System.out.println("SQL " + sql);
+        final String sql = "select " + rm.schema() + " where dd.loan_id=? group by dd.id order by dd.expected_disburse_date";
         return this.jdbcTemplate.query(sql, rm, new Object[] { loanId });
     }
 
@@ -1469,9 +1481,15 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
         	 /*return "dd.id as id,dd.expected_disburse_date as expectedDisbursementdate, dd.disbursedon_date as actualDisbursementdate,dd.principal as principal, " +
         			"lc.amount chargeAmount,lc.id loanChargeId from m_loan_tranche_disbursement_charge tdc right join m_loan_disbursement_detail dd on tdc.disbursement_detail_id = dd.id " +
         			"left join m_loan_charge lc on tdc.loan_charge_id=lc.id ";*/
-        	return "dd.id as id,dd.expected_disburse_date as expectedDisbursementdate,dd.disbursedon_date as actualDisbursementdate,dd.principal as principal,sum(lc.amount) chargeAmount, " +
+        	/*return "dd.id as id,dd.expected_disburse_date as expectedDisbursementdate,dd.disbursedon_date as actualDisbursementdate,dd.principal as principal,sum(lc.amount) chargeAmount, " +
             "group_concat(lc.id) as loanChargeId from m_loan_tranche_disbursement_charge tdc inner join m_loan_disbursement_detail dd on tdc.disbursement_detail_id = dd.id " +
-            "inner join m_loan_charge lc on tdc.loan_charge_id=lc.id "; 
+            "inner join m_loan_charge lc on tdc.loan_charge_id=lc.id ";*/ 
+        	/*return "dd.id as id,dd.expected_disburse_date as expectedDisbursementdate, dd.disbursedon_date as actualDisbursementdate,dd.principal as principal, "+
+        		"lc.amount chargeAmount,lc.id loanChargeId from m_loan l left join m_loan_disbursement_detail dd on dd.loan_id = l.id left join m_loan_tranche_disbursement_charge tdc on tdc.disbursement_detail_id=dd.id "+
+        		"left join m_loan_charge lc on lc.loan_id=l.id and lc.charge_id=tdc.loan_charge_id";*/
+        	return "dd.id as id,dd.expected_disburse_date as expectedDisbursementdate, dd.disbursedon_date as actualDisbursementdate,dd.principal as principal,sum(lc.amount) chargeAmount,group_concat(lc.id) loanChargeId "+
+        	"from m_loan l left join m_loan_disbursement_detail dd on dd.loan_id = l.id left join m_loan_tranche_disbursement_charge tdc on tdc.disbursement_detail_id=dd.id " +
+        	"left join m_loan_charge lc on  lc.id=tdc.loan_charge_id";
         }
 
         @Override

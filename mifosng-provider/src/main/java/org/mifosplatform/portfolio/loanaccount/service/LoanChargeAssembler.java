@@ -154,6 +154,15 @@ public class LoanChargeAssembler {
                                         loanCharge.updateLoanTrancheDisbursementCharge(loanTrancheDisbursementCharge);
                                 }   
                             }
+                        }else{
+                        	if(chargeDefinition.getChargeCalculation() == ChargeCalculationType.FLAT.getValue()){
+                        		if(chargeDefinition.getDisbursementChargeType() == DisbursementChargeType.FIRST_DISBURSEMENT.getValue()){
+                        			final LoanCharge loanCharge = LoanCharge.createNewWithoutLoan(chargeDefinition, principal, amount, chargeTime,
+                                            chargeCalculation, dueDate, chargePaymentModeEnum, numberOfRepayments);
+                                    loanCharges.add(loanCharge);
+                        		}
+                        		
+                        	}
                         }
                     } else {
                         final Long loanChargeId = id;
