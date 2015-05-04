@@ -1554,289 +1554,11 @@ public class Loan extends AbstractPersistable<Long> {
 
     public void updateDisbursementDetails(final JsonCommand command, final Map<String, Object> actualChanges) {
 
-    	/*List<Long> list = fetchDisbursementIds();
-        List<Long> loanChargeIds = fetchLoanChargeIds();
-        List<Charge> chargeList =  loanProduct.getLoanProductCharges();
-        Charge chargeDefinition = chargeList.get(0);
-
-        if (command.parameterExists(LoanApiConstants.disbursementDataParameterName)) {
-            final JsonArray disbursementDataArray = command.arrayOfParameterNamed(LoanApiConstants.disbursementDataParameterName);
-            if (disbursementDataArray != null && disbursementDataArray.size() > 0) {
-                String dateFormat = null;
-                Locale locale = null;
-                if (command.parsedJson().isJsonObject()) {
-                    JsonObject topLevel = command.parsedJson().getAsJsonObject();
-                    final String dateFormatParameter = "dateFormat";
-
-                    if (topLevel.has(dateFormatParameter) && topLevel.get(dateFormatParameter).isJsonPrimitive()) {
-                        final JsonPrimitive primitive = topLevel.get(dateFormatParameter).getAsJsonPrimitive();
-                        dateFormat = primitive.getAsString();
-                    }
-
-                    final String localeParameter = "locale";
-                    if (topLevel.has(localeParameter) && topLevel.get(localeParameter).isJsonPrimitive()) {
-                        final JsonPrimitive primitive = topLevel.get(localeParameter).getAsJsonPrimitive();
-                        String localeString = primitive.getAsString();
-                        locale = JsonParserHelper.localeFromString(localeString);
-                    }
-                }
-                int i = 0;
-                do {
-                    final JsonObject jsonObject = disbursementDataArray.get(i).getAsJsonObject();
-                    if (jsonObject.has(LoanApiConstants.disbursementDateParameterName)
-                            && jsonObject.has(LoanApiConstants.disbursementPrincipalParameterName)) {
-                        Date expectedDisbursementDate = null;
-                        BigDecimal principal = null;
-                        LocalDate date = null;
-                        Long id = null;
-                        String loanChargeId = null;
-                        if (jsonObject.get(LoanApiConstants.disbursementDateParameterName) != null
-                                && jsonObject.get(LoanApiConstants.disbursementDateParameterName).isJsonPrimitive()) {
-
-                            final JsonPrimitive primitive = jsonObject.get(LoanApiConstants.disbursementDateParameterName)
-                                    .getAsJsonPrimitive();
-                            final String valueAsString = primitive.getAsString();
-                            if (StringUtils.isNotBlank(valueAsString)) {
-                                date = JsonParserHelper.convertFrom(valueAsString, LoanApiConstants.disbursementDateParameterName,
-                                        dateFormat, locale);
-                            }
-                        }
-                        if (date != null) {
-                            expectedDisbursementDate = date.toDate();
-                        }
-
-                        if (jsonObject.get(LoanApiConstants.disbursementPrincipalParameterName).isJsonPrimitive()
-                                && StringUtils.isNotBlank((jsonObject.get(LoanApiConstants.disbursementPrincipalParameterName)
-                                        .getAsString()))) {
-                            principal = jsonObject.getAsJsonPrimitive(LoanApiConstants.disbursementPrincipalParameterName)
-                                    .getAsBigDecimal();
-                        }
-                        if (jsonObject.has(LoanApiConstants.disbursementIdParameterName)
-                                && jsonObject.get(LoanApiConstants.disbursementIdParameterName).isJsonPrimitive()
-                                && StringUtils.isNotBlank((jsonObject.get(LoanApiConstants.disbursementIdParameterName).getAsString()))) {
-                            id = jsonObject.getAsJsonPrimitive(LoanApiConstants.disbursementIdParameterName).getAsLong();
-                        }
-                        if(chargeDefinition.isPercentageOfDisbursementAmount()){
-                            if (jsonObject.has(LoanApiConstants.loanChargeIdParameterName)
-                                    && jsonObject.get(LoanApiConstants.loanChargeIdParameterName).isJsonPrimitive()
-                                    && StringUtils.isNotBlank((jsonObject.get(LoanApiConstants.loanChargeIdParameterName).getAsString()))) {
-                                loanChargeId = jsonObject.getAsJsonPrimitive(LoanApiConstants.loanChargeIdParameterName).getAsString();
-                            } 
-                        }
-                        if (id != null) {
-                            LoanDisbursementDetails loanDisbursementDetail = fetchLoanDisbursementsById(id);
-                            list.remove(id);
-                            if(loanChargeId != null && loanChargeId.indexOf(",") != -1){
-                            	String [] temploanChargeId = loanChargeId.split(",");
-                            	for(String chargeId : temploanChargeId){
-                            		loanChargeIds.remove(Long.parseLong(chargeId));
-                            	}
-                            }else{
-                            	loanChargeIds.remove(loanChargeId);
-                            }
-                            //loanChargeIds.remove(loanChargeId);
-                            if (loanDisbursementDetail.actualDisbursementDate() == null) {
-                                Date actualDisbursementDate = null;
-                                LoanDisbursementDetails disbursementDetails = new LoanDisbursementDetails(expectedDisbursementDate,
-                                        actualDisbursementDate, principal);
-                                if (!loanDisbursementDetail.equals(disbursementDetails)) {
-                                    loanDisbursementDetail.copy(disbursementDetails);
-                                    actualChanges.put("disbursementDetailId", id);
-                                    actualChanges.put("recalculateLoanSchedule", true);
-                                }
-                            }
-                        } else {
-                            Date actualDisbursementDate = null;
-                            LoanDisbursementDetails disbursementDetails = new LoanDisbursementDetails(expectedDisbursementDate,
-                                    actualDisbursementDate, principal);
-                            disbursementDetails.updateLoan(this);
-                            this.disbursementDetails.add(disbursementDetails);
-                            if(!(chargeDefinition.getDisbursementChargeType() == DisbursementChargeType.FIRST_DISBURSEMENT.getValue())){
-                                final LoanCharge loanCharge = LoanCharge.createNewWithoutLoan(chargeDefinition, principal, chargeDefinition.getAmount(), null,
-                                        null, new LocalDate(expectedDisbursementDate), null, null);
-                                loanCharge.update(this);
-                                this.charges.add(loanCharge);
-                                LoanTrancheDisbursementCharge loanTrancheDisbursementCharge = new LoanTrancheDisbursementCharge(loanCharge,disbursementDetails);
-                                loanCharge.updateLoanTrancheDisbursementCharge(loanTrancheDisbursementCharge);
-                            }
-                            actualChanges.put(LoanApiConstants.disbursementDataParameterName, expectedDisbursementDate + "-" + principal);
-                            actualChanges.put("recalculateLoanSchedule", true);
-                        }
-                    }
-                    i++;
-                } while (i < disbursementDataArray.size());
-                for (Long id : list) {
-                    this.disbursementDetails.remove(fetchLoanDisbursementsById(id));
-                    actualChanges.put("recalculateLoanSchedule", true);
-                }
-                if(chargeDefinition.isPercentageOfDisbursementAmount()){
-                    for(Long loanChargeId : loanChargeIds){
-                        this.charges.remove(fetchLoanChargesById(loanChargeId));
-                    }
-                } 
-            }
-        }*/
-    	
-    	/*List<Long> list = fetchDisbursementIds();
-        List<Long> loanChargeIds = fetchLoanChargeIds();
-        //Charge chargeDefinition = getChargeDefinition();
-        LoanCharge charge = null;
-        String loanChargeId = null;
-        Long tempChargeId = null;
-        List<Charge> chargeList =  loanProduct.getLoanProductCharges();
-        Charge chargeDefinition = null;
-        for(Charge charges : chargeList){
-            if(charges.getDisbursementChargeType() == DisbursementChargeType.WITH_EACH_DISBURSEMENT.getValue()){
-                 chargeDefinition = charges;
-            }
-        }
-        if (command.parameterExists(LoanApiConstants.disbursementDataParameterName)) {
-            final JsonArray disbursementDataArray = command.arrayOfParameterNamed(LoanApiConstants.disbursementDataParameterName);
-            if (disbursementDataArray != null && disbursementDataArray.size() > 0) {
-                String dateFormat = null;
-                Locale locale = null;
-                if (command.parsedJson().isJsonObject()) {
-                    JsonObject topLevel = command.parsedJson().getAsJsonObject();
-                    final String dateFormatParameter = "dateFormat";
-
-                    if (topLevel.has(dateFormatParameter) && topLevel.get(dateFormatParameter).isJsonPrimitive()) {
-                        final JsonPrimitive primitive = topLevel.get(dateFormatParameter).getAsJsonPrimitive();
-                        dateFormat = primitive.getAsString();
-                    }
-
-                    final String localeParameter = "locale";
-                    if (topLevel.has(localeParameter) && topLevel.get(localeParameter).isJsonPrimitive()) {
-                        final JsonPrimitive primitive = topLevel.get(localeParameter).getAsJsonPrimitive();
-                        String localeString = primitive.getAsString();
-                        locale = JsonParserHelper.localeFromString(localeString);
-                    }
-                }
-                int i = 0;
-                do {
-                    
-                    final JsonObject jsonObject = disbursementDataArray.get(i).getAsJsonObject();
-                    if (jsonObject.has(LoanApiConstants.disbursementDateParameterName)
-                            && jsonObject.has(LoanApiConstants.disbursementPrincipalParameterName)) {
-                        Date expectedDisbursementDate = null;
-                        BigDecimal principal = null;
-                        LocalDate date = null;
-                        Long id = null;
-                        if (jsonObject.get(LoanApiConstants.disbursementDateParameterName) != null
-                                && jsonObject.get(LoanApiConstants.disbursementDateParameterName).isJsonPrimitive()) {
-
-                            final JsonPrimitive primitive = jsonObject.get(LoanApiConstants.disbursementDateParameterName)
-                                    .getAsJsonPrimitive();
-                            final String valueAsString = primitive.getAsString();
-                            if (StringUtils.isNotBlank(valueAsString)) {
-                                date = JsonParserHelper.convertFrom(valueAsString, LoanApiConstants.disbursementDateParameterName,
-                                        dateFormat, locale);
-                            }
-                        }
-                        if (date != null) {
-                            expectedDisbursementDate = date.toDate();
-                        }
-
-                        if (jsonObject.get(LoanApiConstants.disbursementPrincipalParameterName).isJsonPrimitive()
-                                && StringUtils.isNotBlank((jsonObject.get(LoanApiConstants.disbursementPrincipalParameterName)
-                                        .getAsString()))) {
-                            principal = jsonObject.getAsJsonPrimitive(LoanApiConstants.disbursementPrincipalParameterName)
-                                    .getAsBigDecimal();
-                        }
-                        if (jsonObject.has(LoanApiConstants.disbursementIdParameterName)
-                                && jsonObject.get(LoanApiConstants.disbursementIdParameterName).isJsonPrimitive()
-                                && StringUtils.isNotBlank((jsonObject.get(LoanApiConstants.disbursementIdParameterName).getAsString()))) {
-                            id = jsonObject.getAsJsonPrimitive(LoanApiConstants.disbursementIdParameterName).getAsLong();
-                        }
-                        if (jsonObject.has(LoanApiConstants.loanChargeIdParameterName)
-                                && jsonObject.get(LoanApiConstants.loanChargeIdParameterName).isJsonPrimitive()
-                                && StringUtils.isNotBlank((jsonObject.get(LoanApiConstants.loanChargeIdParameterName).getAsString()))) {
-                        	loanChargeId = jsonObject.getAsJsonPrimitive(LoanApiConstants.loanChargeIdParameterName).getAsString();
-                            for(Long loanChargesId : loanChargeIds){
-                                if(loanChargeId != null && loanChargeId.indexOf(",") != -1){
-                                    String chargeId [] = loanChargeId.split(",");
-                                    for(String chid : chargeId){
-                                        if(chid != null && loanChargesId.equals(chid)){
-                                            tempChargeId = Long.getLong(chid);
-                                            charge = fetchLoanChargesById(tempChargeId);
-                                        }
-                                    }
-                                }else{
-                                    if(loanChargeId != null && loanChargesId.equals(loanChargeId)){
-                                        tempChargeId = Long.parseLong(loanChargeId);
-                                        charge = fetchLoanChargesById(tempChargeId);
-                                    }
-                                }
-                                
-                            }
-                            
-                        }
-                       
-                        if (id != null) {
-                            LoanDisbursementDetails loanDisbursementDetail = fetchLoanDisbursementsById(id);
-                            list.remove(id);
-                            if(loanChargeId != null && loanChargeId.indexOf(",") != -1){
-                            	String [] temploanChargeId = loanChargeId.split(",");
-                            	for(String chargeId : temploanChargeId){
-                            		loanChargeIds.remove(Long.parseLong(chargeId));
-                            		charge = fetchLoanChargesById(Long.parseLong(chargeId));
-                            	}
-                            }else{
-                            	loanChargeIds.remove(Long.parseLong(loanChargeId));
-                            	charge = fetchLoanChargesById(Long.parseLong(loanChargeId));
-                            }
-                            loanChargeIds.remove(tempChargeId);
-                            if (loanDisbursementDetail.actualDisbursementDate() == null) {
-                                Date actualDisbursementDate = null;
-                                LoanDisbursementDetails disbursementDetails = new LoanDisbursementDetails(expectedDisbursementDate,
-                                        actualDisbursementDate, principal);
-                                if (!loanDisbursementDetail.equals(disbursementDetails)) {
-                                    loanDisbursementDetail.copy(disbursementDetails);
-                                    actualChanges.put("disbursementDetailId", id);
-                                    actualChanges.put("recalculateLoanSchedule", true);
-                                }
-                            }
-                        } else {
-                            Date actualDisbursementDate = null;
-                            LoanDisbursementDetails disbursementDetails = new LoanDisbursementDetails(expectedDisbursementDate,
-                                    actualDisbursementDate, principal);
-                            disbursementDetails.updateLoan(this);
-                            this.disbursementDetails.add(disbursementDetails);
-                            if(!(charge != null && charge.getCharge().getDisbursementChargeType() == DisbursementChargeType.FIRST_DISBURSEMENT.getValue())) {
-                                final LoanCharge loanCharge = LoanCharge.createNewWithoutLoan(chargeDefinition, principal, charge.getAmountPercentageAppliedTo(), null,
-                                        null, new LocalDate(expectedDisbursementDate), null, null);
-                                loanCharge.update(this);
-                                this.charges.add(loanCharge);
-                                LoanTrancheDisbursementCharge loanTrancheDisbursementCharge = new LoanTrancheDisbursementCharge(loanCharge,disbursementDetails);
-                                loanCharge.updateLoanTrancheDisbursementCharge(loanTrancheDisbursementCharge);
-                            }
-                            
-                            actualChanges.put(LoanApiConstants.disbursementDataParameterName, expectedDisbursementDate + "-" + principal);
-                            actualChanges.put("recalculateLoanSchedule", true);
-                        }
-                    }
-                    i++;
-                } while (i < disbursementDataArray.size());
-                for (Long id : list) {
-                    this.disbursementDetails.remove(fetchLoanDisbursementsById(id));
-                    actualChanges.put("recalculateLoanSchedule", true);
-                }
-                if(charge != null && charge.getChargeCalculation() == ChargeCalculationType.PERCENT_OF_DISBURSEMENT_AMOUNT){
-                    for(Long chargeId : loanChargeIds){
-                        //if(tempChargeId != null && tempChargeId.equals(chargeId)){
-                            this.charges.remove(fetchLoanChargesById(chargeId));
-                        //}
-                        
-                    }
-                } 
-            }
-        }*/
-    	
     	List<Long> list = fetchDisbursementIds();
         List<Long> loanChargeIds = fetchLoanChargeIds();
-        //Charge chargeDefinition = getChargeDefinition();
         LoanCharge charge = null;
         String chargeIds = null;
-        Long tempChargeId = null;
+         
         List<Charge> chargeList =  loanProduct.getLoanProductCharges();
         Charge chargeDefinition = null;
         for(Charge charges : chargeList){
@@ -1908,56 +1630,20 @@ public class Loan extends AbstractPersistable<Long> {
                             if(chargeIds != null && chargeIds.indexOf(",") != -1){
                                 String []chargeId = chargeIds.split(",");
                                 for(String chid : chargeId){
-                                    //if(chid != null && loanChargesId.equals(Long.parseLong(chid))){
-                                        //tempChargeId = Long.getLong(chid);
                                     	loanChargeIds.remove(Long.parseLong(chid));
                                         charge = fetchLoanChargesById(Long.parseLong(chid));
-                                    //}
+                                        chargeDefinition = charge.getCharge();
                                 }
                             }else{
                             	loanChargeIds.remove(Long.parseLong(chargeIds));
                                 charge = fetchLoanChargesById(Long.parseLong(chargeIds));
+                                chargeDefinition = charge.getCharge();
                             }
                         }
-                        
-                        /*for(Long loanChargesId : loanChargeIds){
-                        	System.out.println("loanChargeIds " + loanChargeIds.size());
-                        	System.out.println("loanChargesId " + loanChargesId);
-                            if(chargeIds != null && chargeIds.indexOf(",") != -1){
-                                String []chargeId = chargeIds.split(",");
-                                for(String chid : chargeId){
-                                    if(chid != null && loanChargesId.equals(Long.parseLong(chid))){
-                                        //tempChargeId = Long.getLong(chid);
-                                    	loanChargeIds.remove(Long.parseLong(chid));
-                                        charge = fetchLoanChargesById(Long.parseLong(chid));
-                                    }
-                                }
-                            }else{
-                                if(chargeIds != null && loanChargesId.equals(chargeIds)){
-                                    //tempChargeId = Long.getLong(chargeIds);
-                                    //charge = fetchLoanChargesById(tempChargeId);
-                                	loanChargeIds.remove(Long.parseLong(chargeIds));
-                                    charge = fetchLoanChargesById(Long.parseLong(chargeIds));
-                                }
-                            }
-                            
-                        }*/
-                       
+          
                         if (id != null) {
                             LoanDisbursementDetails loanDisbursementDetail = fetchLoanDisbursementsById(id);
                             list.remove(id);
-                            
-                           /* if(chargeIds != null && chargeIds.indexOf(",") != -1){
-                            	String [] temploanChargeId = chargeIds.split(",");
-                            	for(String chargeId : temploanChargeId){
-                            		loanChargeIds.remove(Long.parseLong(chargeId));
-                            		charge = fetchLoanChargesById(Long.parseLong(chargeId));
-                            	}
-                            }else{
-                            	loanChargeIds.remove(Long.parseLong(chargeIds));
-                            	charge = fetchLoanChargesById(Long.parseLong(chargeIds));
-                            }*/
-                            //loanChargeIds.remove(chargeIds);
                             if (loanDisbursementDetail.actualDisbursementDate() == null) {
                                 Date actualDisbursementDate = null;
                                 LoanDisbursementDetails disbursementDetails = new LoanDisbursementDetails(expectedDisbursementDate,
@@ -1969,26 +1655,34 @@ public class Loan extends AbstractPersistable<Long> {
                                 }
                             }
                         } else {
-                        	charge = null;
                             Date actualDisbursementDate = null;
                             LoanDisbursementDetails disbursementDetails = new LoanDisbursementDetails(expectedDisbursementDate,
                                     actualDisbursementDate, principal);
                             disbursementDetails.updateLoan(this);
                             this.disbursementDetails.add(disbursementDetails);
                             if(!(charge != null && charge.getCharge().getDisbursementChargeType() == DisbursementChargeType.FIRST_DISBURSEMENT.getValue())) {
-                            	 for(Charge charges : chargeList){
-                                     if(charges.getDisbursementChargeType() == DisbursementChargeType.WITH_EACH_DISBURSEMENT.getValue()){
-                                          chargeDefinition = charges;
-                                     }
-                                    
-                                	 final LoanCharge loanCharge = LoanCharge.createNewWithoutLoan(chargeDefinition, principal, null, null,
-                                             null, new LocalDate(expectedDisbursementDate), null, null);
-                                     loanCharge.update(this);
-                                     this.charges.add(loanCharge);
-                                     LoanTrancheDisbursementCharge loanTrancheDisbursementCharge = new LoanTrancheDisbursementCharge(loanCharge,disbursementDetails);
-                                     loanCharge.updateLoanTrancheDisbursementCharge(loanTrancheDisbursementCharge);
-                                    
-                                 }
+                            	if(chargeIds != null && chargeIds.indexOf(",") != -1){
+                                    String []chargeId = chargeIds.split(",");
+                                    for(String chid : chargeId){
+                                          charge = fetchLoanChargesById(Long.parseLong(chid));
+                                          chargeDefinition = charge.getCharge();
+                                          final LoanCharge loanCharge = LoanCharge.createNewWithoutLoan(chargeDefinition, principal, null, null,
+                                                  null, new LocalDate(expectedDisbursementDate), null, null);
+                                          loanCharge.update(this);
+                                          this.charges.add(loanCharge);
+                                          LoanTrancheDisbursementCharge loanTrancheDisbursementCharge = new LoanTrancheDisbursementCharge(loanCharge,disbursementDetails);
+                                          loanCharge.updateLoanTrancheDisbursementCharge(loanTrancheDisbursementCharge);
+                                    }
+                                }else{
+                                    charge = fetchLoanChargesById(Long.parseLong(chargeIds));
+                                    chargeDefinition = charge.getCharge();
+                                    final LoanCharge loanCharge = LoanCharge.createNewWithoutLoan(chargeDefinition, principal, null, null,
+                                            null, new LocalDate(expectedDisbursementDate), null, null);
+                                    loanCharge.update(this);
+                                    this.charges.add(loanCharge);
+                                    LoanTrancheDisbursementCharge loanTrancheDisbursementCharge = new LoanTrancheDisbursementCharge(loanCharge,disbursementDetails);
+                                    loanCharge.updateLoanTrancheDisbursementCharge(loanTrancheDisbursementCharge);
+                                }
                                 
                             }
                             
@@ -2004,15 +1698,11 @@ public class Loan extends AbstractPersistable<Long> {
                 }
                 if(charge != null && charge.getChargeCalculation() == ChargeCalculationType.PERCENT_OF_DISBURSEMENT_AMOUNT){
                     for(Long chargeId : loanChargeIds){
-                        //if(tempChargeId != null && tempChargeId.equals(chargeId)){
-                            this.charges.remove(fetchLoanChargesById(chargeId));
-                        //}
-                        
+                        this.charges.remove(fetchLoanChargesById(chargeId));
                     }
                 } 
             }
-       
-      }
+        }
       
     }
     
