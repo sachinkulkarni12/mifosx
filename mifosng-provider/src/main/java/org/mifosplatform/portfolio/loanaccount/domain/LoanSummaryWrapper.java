@@ -100,6 +100,9 @@ public final class LoanSummaryWrapper {
             final MonetaryCurrency currency) {
         Money total = Money.zero(currency);
         for (final LoanRepaymentScheduleInstallment installment : repaymentScheduleInstallments) {
+        	/*if(installment.getDueDate() == null){
+        		
+        	}*/
             total = total.plus(installment.getFeeChargesCharged(currency));
         }
         return total;

@@ -15,6 +15,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
 import org.joda.time.Days;
@@ -55,7 +56,9 @@ import org.mifosplatform.portfolio.calendar.domain.CalendarInstanceRepository;
 import org.mifosplatform.portfolio.calendar.service.CalendarReadPlatformService;
 import org.mifosplatform.portfolio.charge.data.ChargeData;
 import org.mifosplatform.portfolio.charge.domain.Charge;
+import org.mifosplatform.portfolio.charge.domain.ChargeCalculationType;
 import org.mifosplatform.portfolio.charge.domain.ChargeTimeType;
+import org.mifosplatform.portfolio.charge.domain.DisbursementChargeType;
 import org.mifosplatform.portfolio.charge.service.ChargeReadPlatformService;
 import org.mifosplatform.portfolio.client.data.ClientData;
 import org.mifosplatform.portfolio.client.domain.ClientEnumerations;
@@ -82,6 +85,7 @@ import org.mifosplatform.portfolio.loanaccount.data.LoanTransactionEnumData;
 import org.mifosplatform.portfolio.loanaccount.data.PaidInAdvanceData;
 import org.mifosplatform.portfolio.loanaccount.data.RepaymentScheduleRelatedLoanData;
 import org.mifosplatform.portfolio.loanaccount.domain.Loan;
+import org.mifosplatform.portfolio.loanaccount.domain.LoanCharge;
 import org.mifosplatform.portfolio.loanaccount.domain.LoanRepaymentScheduleInstallment;
 import org.mifosplatform.portfolio.loanaccount.domain.LoanRepaymentScheduleTransactionProcessorFactory;
 import org.mifosplatform.portfolio.loanaccount.domain.LoanRepository;
@@ -1049,6 +1053,16 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
                                     periods.add(periodData);
                             	}
                                 
+                            }else if(chargeDefinition.getChargeCalculation() == ChargeCalculationType.FLAT.getValue()){
+                            	if(data.getChargeAmount() == null){
+                            		final LoanSchedulePeriodData periodData = LoanSchedulePeriodData.disbursementOnlyPeriod(
+                                            data.disbursementDate(), data.amount(), BigDecimal.ZERO, data.isDisbursed());
+                                    periods.add(periodData);
+                            	}else{
+                            		final LoanSchedulePeriodData periodData = LoanSchedulePeriodData.disbursementOnlyPeriod(
+                                            data.disbursementDate(), data.amount(), data.getChargeAmount(), data.isDisbursed());
+                                    periods.add(periodData);
+                            	}
                             }
                             this.outstandingLoanPrincipalBalance = this.outstandingLoanPrincipalBalance.add(data.amount());
                         } else if (data.isDueForDisbursement(fromDate, dueDate)) {
@@ -1060,6 +1074,16 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
                                             data.disbursementDate(), data.amount(), BigDecimal.ZERO, data.isDisbursed());
                                     periods.add(periodData);
                                 }else if(chargeDefinition.isPercentageOfDisbursementAmount()){
+                                	if(data.getChargeAmount() == null){
+                                		final LoanSchedulePeriodData periodData = LoanSchedulePeriodData.disbursementOnlyPeriod(
+                                                data.disbursementDate(), data.amount(), BigDecimal.ZERO, data.isDisbursed());
+                                        periods.add(periodData);
+                                	}else{
+                                		final LoanSchedulePeriodData periodData = LoanSchedulePeriodData.disbursementOnlyPeriod(
+                                                data.disbursementDate(), data.amount(), data.getChargeAmount(), data.isDisbursed());
+                                        periods.add(periodData);
+                                	}
+                                }else if(chargeDefinition.getChargeCalculation() == ChargeCalculationType.FLAT.getValue()){
                                 	if(data.getChargeAmount() == null){
                                 		final LoanSchedulePeriodData periodData = LoanSchedulePeriodData.disbursementOnlyPeriod(
                                                 data.disbursementDate(), data.amount(), BigDecimal.ZERO, data.isDisbursed());

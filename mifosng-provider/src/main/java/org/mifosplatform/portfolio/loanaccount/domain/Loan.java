@@ -1703,20 +1703,7 @@ public class Loan extends AbstractPersistable<Long> {
                 }
                 if(charge != null && charge.getChargeCalculation() == ChargeCalculationType.PERCENT_OF_DISBURSEMENT_AMOUNT){
                     for(Long chargeId : loanChargeIds){
-                    	/*if(chargeIds != null && chargeIds.indexOf(",") != -1){
-                            String []chargesId = chargeIds.split(",");
-                            for(String chid : chargesId){
-                            	if(chargeId != null && chargeId.equals(Long.parseLong(chid))){
-                            		this.charges.remove(fetchLoanChargesById(chargeId));
-                            	}
-                                    
-                            }
-                    	}else{
-                    		 charge = fetchLoanChargesById(Long.parseLong(chargeIds));
-                    		if(charge.getCharge().getChargeCalculation() != ChargeCalculationType.FLAT.getValue()){
-                        		this.charges.remove(fetchLoanChargesById(chargeId));
-                        	}
-                    	}*/
+                    	 charge = fetchLoanChargesById(chargeId);
                     	if(charge.getCharge().getChargeCalculation() != ChargeCalculationType.FLAT.getValue()){
                     		this.charges.remove(fetchLoanChargesById(chargeId));
                     	}
@@ -2546,103 +2533,8 @@ public class Loan extends AbstractPersistable<Long> {
         List<Charge> chargeList =  loanProduct.getLoanProductCharges();
         Charge chargeDefinition = chargeList.get(0);
         Money disbursentMoney = Money.zero(getCurrency());
-        
-
-        final LoanTransaction chargesPayment = LoanTransaction.repaymentAtDisbursement(getOffice(), disbursentMoney, null, disbursedOn,
-                null, createdDate, currentUser);
-        final Integer installmentNumber = null;
-        for (final LoanCharge charge : charges()) {
-        	if(charge.getCharge().isPercentageOfApprovedAmount()){
-        		if (disbursedOn.toDate().equals(this.actualDisbursementDate)) {
-        			 if (charge.isDueAtDisbursement()) {
-        	                if (totalFeeChargesDueAtDisbursement.isGreaterThanZero()
-        	                        && !charge.getChargePaymentMode().isPaymentModeAccountTransfer()) {
-        	                    charge.markAsFullyPaid();
-        	                    // Add "Loan Charge Paid By" details to this transaction
-        	                    final LoanChargePaidBy loanChargePaidBy = new LoanChargePaidBy(chargesPayment, charge, charge.amount(),
-        	                            installmentNumber);
-        	                    chargesPayment.getLoanChargesPaid().add(loanChargePaidBy);
-        	                    disbursentMoney = disbursentMoney.plus(charge.amount());
-        	                }
-        	            } else {
-        	                /**
-        	                 * create a Charge applied transaction if Upfront Accrual,
-        	                 * None or Cash based accounting is enabled
-        	                 **/
-        	                if (isNoneOrCashOrUpfrontAccrualAccountingEnabledOnLoanProduct()) {
-        	                    handleChargeAppliedTransaction(charge, disbursedOn, currentUser);
-        	                }
-        	          }
-        		}
-        	}else if(charge.getCharge().isPercentageOfDisbursementAmount()) {
-        		Date actualDisbursementDate = getActualDisbursementDate(charge);
-	           	 if(charge.getCharge().getDisbursementChargeType() == DisbursementChargeType.FIRST_DISBURSEMENT.getValue()){
-	           		 if(charge.getAmountPaid(getCurrency()).isZero()){
-	                        charge.markAsFullyPaid();
-	                        // Add "Loan Charge Paid By" details to this transaction
-	                        final LoanChargePaidBy loanChargePaidBy = new LoanChargePaidBy(chargesPayment, charge, charge.amount(),
-	                                installmentNumber);
-	                        chargesPayment.getLoanChargesPaid().add(loanChargePaidBy);
-	                        disbursentMoney = disbursentMoney.plus(charge.amount());
-	                    }
-	           	 }
-	           	if(charge.getCharge().getDisbursementChargeType() == DisbursementChargeType.WITH_EACH_DISBURSEMENT.getValue()){
-                    /*if(disbursedOn.equals(charge.getDueLocalDate()) || disbursedOn.isAfter(charge.getDueLocalDate())){*/
-                	if(disbursedOn.equals(new LocalDate(actualDisbursementDate)) && actualDisbursementDate != null){	
-                        if (charge.isDueAtDisbursement()) {
-                            if (totalFeeChargesDueAtDisbursement.isGreaterThanZero()
-                                    && !charge.getChargePaymentMode().isPaymentModeAccountTransfer()) {
-                                charge.markAsFullyPaid();
-                                // Add "Loan Charge Paid By" details to this transaction
-                                final LoanChargePaidBy loanChargePaidBy = new LoanChargePaidBy(chargesPayment, charge, charge.amount(),
-                                        installmentNumber);
-                                chargesPayment.getLoanChargesPaid().add(loanChargePaidBy);
-                                disbursentMoney = disbursentMoney.plus(charge.amount());
-                            }
-                        } else {
-                            /**
-                             * create a Charge applied transaction if Upfront Accrual,
-                             * None or Cash based accounting is enabled
-                             **/
-                            if (isNoneOrCashOrUpfrontAccrualAccountingEnabledOnLoanProduct()) {
-                                handleChargeAppliedTransaction(charge, disbursedOn, currentUser);
-                            }
-		                }
-		            }
-        
-		        }/*else{
-		        	if (charge.isDueAtDisbursement()) {
-	                    if (totalFeeChargesDueAtDisbursement.isGreaterThanZero()
-	                            && !charge.getChargePaymentMode().isPaymentModeAccountTransfer()) {
-	                        charge.markAsFullyPaid();
-	                        // Add "Loan Charge Paid By" details to this transaction
-		                    final LoanChargePaidBy loanChargePaidBy = new LoanChargePaidBy(chargesPayment, charge, charge.amount(),
-		                            installmentNumber);
-		                    chargesPayment.getLoanChargesPaid().add(loanChargePaidBy);
-		                    disbursentMoney = disbursentMoney.plus(charge.amount());
-	                    }
-		            } else {
-		                *//**
-		                 * create a Charge applied transaction if Upfront Accrual,
-		                 * None or Cash based accounting is enabled
-		                 **//*
-		                if (isNoneOrCashOrUpfrontAccrualAccountingEnabledOnLoanProduct()) {
-		                    handleChargeAppliedTransaction(charge, disbursedOn, currentUser);
-		                }
-		            }   
-		        }*/
-        	}
-           
-        }
-        if (disbursentMoney.isGreaterThanZero()) {
-            final Money zero = Money.zero(getCurrency());
-            chargesPayment.updateComponentsAndTotal(zero, zero, disbursentMoney, zero);
-            chargesPayment.updateLoan(this);
-            this.loanTransactions.add(chargesPayment);
-            updateLoanOutstandingBalaces();
-        }
-    
-     /*   if(chargeDefinition.isPercentageOfApprovedAmount()){
+  
+       if(chargeDefinition.isPercentageOfApprovedAmount()){
 	        if (disbursedOn.toDate().equals(this.actualDisbursementDate)) {
 	            final LoanTransaction chargesPayment = LoanTransaction.repaymentAtDisbursement(getOffice(), disbursentMoney, null, disbursedOn,
 	                    null, createdDate, currentUser);
@@ -2659,10 +2551,10 @@ public class Loan extends AbstractPersistable<Long> {
 	                        disbursentMoney = disbursentMoney.plus(charge.amount());
 	                    }
 	                } else {
-	                    *//**
+	                    /**
 	                     * create a Charge applied transaction if Upfront Accrual,
 	                     * None or Cash based accounting is enabled
-	                     **//*
+	                     **/
 	                    if (isNoneOrCashOrUpfrontAccrualAccountingEnabledOnLoanProduct()) {
 	                        handleChargeAppliedTransaction(charge, disbursedOn, currentUser);
 	                    }
@@ -2676,12 +2568,13 @@ public class Loan extends AbstractPersistable<Long> {
 	                updateLoanOutstandingBalaces();
 	            }
 	        }
-	            }else if(chargeDefinition.isPercentageOfDisbursementAmount()){
+	            }else if(chargeDefinition.isPercentageOfDisbursementAmount() || chargeDefinition.getChargeCalculation() == ChargeCalculationType.FLAT.getValue()){
 	            	final LoanTransaction chargesPayment = LoanTransaction.repaymentAtDisbursement(getOffice(), disbursentMoney, null, disbursedOn,
 	                        null, createdDate, currentUser);
 	                final Integer installmentNumber = null;
 	                for (final LoanCharge charge : charges()) {
 	                	 Date actualDisbursementDate = getActualDisbursementDate(charge);
+	                	
 	                	 if(charge.getCharge().getDisbursementChargeType() == DisbursementChargeType.FIRST_DISBURSEMENT.getValue()){
 	                		 if(charge.getAmountPaid(getCurrency()).isZero()){
 	                             charge.markAsFullyPaid();
@@ -2694,7 +2587,6 @@ public class Loan extends AbstractPersistable<Long> {
 	                	 }
 	                	 
 	                	if(charge.getCharge().getDisbursementChargeType() == DisbursementChargeType.WITH_EACH_DISBURSEMENT.getValue()){
-	                    if(disbursedOn.equals(charge.getDueLocalDate()) || disbursedOn.isAfter(charge.getDueLocalDate())){
 	                	if(disbursedOn.equals(new LocalDate(actualDisbursementDate)) && actualDisbursementDate != null){	
 	                        if (charge.isDueAtDisbursement()) {
 	                            if (totalFeeChargesDueAtDisbursement.isGreaterThanZero()
@@ -2707,36 +2599,16 @@ public class Loan extends AbstractPersistable<Long> {
 	                                disbursentMoney = disbursentMoney.plus(charge.amount());
 	                            }
 	                        } else {
-	                            *//**
+	                            /**
 	                             * create a Charge applied transaction if Upfront Accrual,
 	                             * None or Cash based accounting is enabled
-	                             **//*
+	                             **/
 	                            if (isNoneOrCashOrUpfrontAccrualAccountingEnabledOnLoanProduct()) {
 	                                handleChargeAppliedTransaction(charge, disbursedOn, currentUser);
 	                            }
 			                }
 			            }
 	        
-			        }else{
-			            if (charge.isDueAtDisbursement()) {
-			                    if (totalFeeChargesDueAtDisbursement.isGreaterThanZero()
-			                            && !charge.getChargePaymentMode().isPaymentModeAccountTransfer()) {
-			                        charge.markAsFullyPaid();
-			                        // Add "Loan Charge Paid By" details to this transaction
-			                    final LoanChargePaidBy loanChargePaidBy = new LoanChargePaidBy(chargesPayment, charge, charge.amount(),
-			                            installmentNumber);
-			                    chargesPayment.getLoanChargesPaid().add(loanChargePaidBy);
-			                    disbursentMoney = disbursentMoney.plus(charge.amount());
-			                }
-			            } else {
-			                *//**
-			                 * create a Charge applied transaction if Upfront Accrual,
-			                 * None or Cash based accounting is enabled
-			                 **//*
-			                if (isNoneOrCashOrUpfrontAccrualAccountingEnabledOnLoanProduct()) {
-			                    handleChargeAppliedTransaction(charge, disbursedOn, currentUser);
-			                }
-			            }   
 			        }
 	           }
 		        if (disbursentMoney.isGreaterThanZero()) {
@@ -2746,7 +2618,7 @@ public class Loan extends AbstractPersistable<Long> {
 		            this.loanTransactions.add(chargesPayment);
 		            updateLoanOutstandingBalaces();
 		        }  
-	       } */          	
+	       }           	
 
         if (getApprovedOnDate() != null && disbursedOn.isBefore(getApprovedOnDate())) {
             final String errorMessage = "The date on which a loan is disbursed cannot be before its approval date: "
@@ -5559,6 +5431,7 @@ public class Loan extends AbstractPersistable<Long> {
             if(trancheDisbursementCharge != null){
                 LoanDisbursementDetails details = trancheDisbursementCharge.getloanDisbursementDetails();
                 actualDisbursementDate =  details.actualDisbursementDate();
+                //loanCharge.setDueDate(new LocalDate(actualDisbursementDate));
             }
         }
         return actualDisbursementDate;
