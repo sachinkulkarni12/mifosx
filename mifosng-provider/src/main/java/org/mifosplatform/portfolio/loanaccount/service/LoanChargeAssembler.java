@@ -121,11 +121,11 @@ public class LoanChargeAssembler {
                             loanCharges.add(loanCharge);
                         }
                        if(!isMultiDisbursal){
-                            if(chargeDefinition.isPercentageOfDisbursementAmount() && chargeDefinition.getDisbursementChargeType() == DisbursementChargeType.FIRST_DISBURSEMENT.getValue()){
+                            //if(chargeDefinition.isPercentageOfDisbursementAmount() && chargeDefinition.getDisbursementChargeType() == DisbursementChargeType.FIRST_DISBURSEMENT.getValue()){
                                 final LoanCharge loanCharge = LoanCharge.createNewWithoutLoan(chargeDefinition, principal, amount, chargeTime,
                                         chargeCalculation, dueDate, chargePaymentModeEnum, numberOfRepayments);
                                 loanCharges.add(loanCharge);
-                            }
+                            //}
                         }
                         if(topLevelJsonElement.has("disbursementData") && topLevelJsonElement.get("disbursementData").isJsonArray()){
                             final JsonArray disbursementArray = topLevelJsonElement.get("disbursementData").getAsJsonArray();

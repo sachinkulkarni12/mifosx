@@ -375,7 +375,7 @@ public class LoansApiResource {
         if (!associationParameters.isEmpty()) {
 
             if (associationParameters.contains("all")) {
-                associationParameters.addAll(Arrays.asList("repaymentSchedule", "futureSchedule", "originalSchedule", "transactions",
+                associationParameters.addAll(Arrays.asList("repaymentSchedule", /*"futureSchedule",*/ "originalSchedule", "transactions",
                         "charges", "guarantors", "collateral", "notes", "linkedAccount", "multiDisburseDetails"));
             }
 
