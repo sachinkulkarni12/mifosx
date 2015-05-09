@@ -108,7 +108,8 @@ public class CentersApiResource {
     @Consumes({ MediaType.APPLICATION_JSON })
     @Produces({ MediaType.APPLICATION_JSON })
     public String retrieveTemplate(@Context final UriInfo uriInfo, @QueryParam("command") final String commandParam,
-            @QueryParam("officeId") final Long officeId,
+            @QueryParam("officeId") final Long officeId, @QueryParam("villageId") final Long villageId,
+            @DefaultValue("false") @QueryParam("villagesInSelectedOfficeOnly") final boolean villagesInSelectedOfficeOnly,
             @DefaultValue("false") @QueryParam("staffInSelectedOfficeOnly") final boolean staffInSelectedOfficeOnly) {
 
         this.context.authenticatedUser().validateHasReadPermission(GroupingTypesApiConstants.CENTER_RESOURCE_NAME);
@@ -120,7 +121,8 @@ public class CentersApiResource {
                     GroupingTypesApiConstants.CENTER_RESPONSE_DATA_PARAMETERS);
         }
 
-        final CenterData template = this.centerReadPlatformService.retrieveTemplate(officeId, staffInSelectedOfficeOnly);
+        final CenterData template = this.centerReadPlatformService.retrieveTemplate(officeId, villageId, villagesInSelectedOfficeOnly,
+                staffInSelectedOfficeOnly);
 
         final ApiRequestJsonSerializationSettings settings = this.apiRequestParameterHelper.process(uriInfo.getQueryParameters());
         return this.centerApiJsonSerializer.serialize(settings, template, GroupingTypesApiConstants.CENTER_RESPONSE_DATA_PARAMETERS);
@@ -174,7 +176,7 @@ public class CentersApiResource {
 
         final boolean template = ApiParameterHelper.template(uriInfo.getQueryParameters());
         if (template) {
-            final CenterData templateCenter = this.centerReadPlatformService.retrieveTemplate(center.officeId(), staffInSelectedOfficeOnly);
+            final CenterData templateCenter = this.centerReadPlatformService.retrieveTemplate(center.officeId(),null, false, staffInSelectedOfficeOnly);
             center = CenterData.withTemplate(templateCenter, center);
         }
 

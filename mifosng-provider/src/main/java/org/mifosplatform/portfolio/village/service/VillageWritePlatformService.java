@@ -1,0 +1,11 @@
+package org.mifosplatform.portfolio.village.service;
+
+import org.mifosplatform.infrastructure.core.api.JsonCommand;
+import org.mifosplatform.infrastructure.core.data.CommandProcessingResult;
+
+
+public interface VillageWritePlatformService {
+
+  //  CommandProcessingResult associateCentersToVillage(Long villageId, JsonCommand command);
+    CommandProcessingResult createVillage(final JsonCommand command);
+}

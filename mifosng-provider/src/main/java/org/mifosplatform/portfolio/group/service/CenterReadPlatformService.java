@@ -17,7 +17,7 @@ import org.mifosplatform.portfolio.group.data.StaffCenterData;
 
 public interface CenterReadPlatformService {
 
-    CenterData retrieveTemplate(Long officeId, boolean staffInSelectedOfficeOnly);
+    CenterData retrieveTemplate(Long officeId, Long villageId, final boolean villagesInSelectedOfficeOnly, boolean staffInSelectedOfficeOnly);
 
     CenterData retrieveOne(Long centerId);
 
