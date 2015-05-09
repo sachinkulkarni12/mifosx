@@ -41,7 +41,6 @@ import org.mifosplatform.portfolio.charge.domain.Charge;
 import org.mifosplatform.portfolio.charge.domain.ChargeCalculationType;
 import org.mifosplatform.portfolio.charge.domain.ChargePaymentMode;
 import org.mifosplatform.portfolio.charge.domain.ChargeTimeType;
-import org.mifosplatform.portfolio.charge.domain.DisbursementChargeType;
 import org.mifosplatform.portfolio.charge.exception.LoanChargeWithoutMandatoryFieldException;
 import org.mifosplatform.portfolio.loanaccount.command.LoanChargeCommand;
 import org.mifosplatform.portfolio.loanaccount.data.LoanChargePaidDetail;
@@ -223,13 +222,7 @@ public class LoanCharge extends AbstractPersistable<Long> {
         this.chargeCalculation = chargeDefinition.getChargeCalculation();
         if (chargeCalculation != null) {
             this.chargeCalculation = chargeCalculation.getValue();
-        }
-       /* if(ChargeCalculationType.fromInt(this.chargeCalculation).equals(ChargeCalculationType.PERCENT_OF_DISBURSEMENT_AMOUNT) ||
-        		ChargeCalculationType.fromInt(this.chargeCalculation).equals(ChargeCalculationType.PERCENT_OF_APPROVED_AMOUNT) ||
-        		ChargeCalculationType.fromInt(this.chargeCalculation).equals(ChargeCalculationType.FLAT.getValue())){
-        	this.dueDate = dueDate.toDate();
-        }*/
-        
+        }        
 
         BigDecimal chargeAmount = chargeDefinition.getAmount();
         if (amount != null) {
@@ -428,6 +421,15 @@ public class LoanCharge extends AbstractPersistable<Long> {
                 case PERCENT_OF_INTEREST:
                     amountPercentageAppliedTo = this.loan.getTotalInterest();
                 break;
+                case PERCENT_OF_DISBURSEMENT_AMOUNT:
+                    Set<LoanDisbursementDetails> loanCharge = this.loan.getDisbursementDetails();
+                    for(LoanDisbursementDetails loanDisbursementDetails : loanCharge){
+                    	if(loanDisbursementDetails.getDisbursementDate() != null && 
+                    			dueDate.equals(new LocalDate(loanDisbursementDetails.getDisbursementDate()))){
+                    		amountPercentageAppliedTo = loanDisbursementDetails.principal();
+                    	}
+                    }
+                break;
                 default:
                 break;
             }
@@ -534,7 +536,8 @@ public class LoanCharge extends AbstractPersistable<Long> {
     }
 
     public boolean isDueAtDisbursement() {
-        return ChargeTimeType.fromInt(this.chargeTime).equals(ChargeTimeType.DISBURSEMENT);
+        return ChargeTimeType.fromInt(this.chargeTime).equals(ChargeTimeType.DISBURSEMENT) || 
+        		ChargeTimeType.fromInt(this.chargeTime).equals(ChargeTimeType.TRANCHE_DISBURSEMENT);
     }
 
     public boolean isSpecifiedDueDate() {
@@ -989,12 +992,4 @@ public class LoanCharge extends AbstractPersistable<Long> {
     public Loan getLoan() {
         return this.loan;
     }
-    
-   /* public void setDueDate(LocalDate dueDate){
-    	 if(dueDate != null && ChargeCalculationType.fromInt(this.chargeCalculation).equals(ChargeCalculationType.PERCENT_OF_DISBURSEMENT_AMOUNT) ||
-         		ChargeCalculationType.fromInt(this.chargeCalculation).equals(ChargeCalculationType.PERCENT_OF_APPROVED_AMOUNT) ||
-         		ChargeCalculationType.fromInt(this.chargeCalculation).equals(ChargeCalculationType.FLAT.getValue())){
-         	this.dueDate = dueDate.toDate();
-         }
-    }*/
 }

@@ -24,7 +24,7 @@ public class LoanChargePaidBy extends AbstractPersistable<Long> {
     @JoinColumn(name = "loan_transaction_id", nullable = false)
     private LoanTransaction loanTransaction;
 
-    @ManyToOne(cascade = CascadeType.ALL, optional = false)
+    @ManyToOne(cascade= CascadeType.ALL)
     @JoinColumn(name = "loan_charge_id", nullable = false)
     private LoanCharge loanCharge;
 

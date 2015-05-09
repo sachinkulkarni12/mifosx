@@ -10,7 +10,6 @@ import org.mifosplatform.portfolio.charge.domain.ChargeAppliesTo;
 import org.mifosplatform.portfolio.charge.domain.ChargeCalculationType;
 import org.mifosplatform.portfolio.charge.domain.ChargePaymentMode;
 import org.mifosplatform.portfolio.charge.domain.ChargeTimeType;
-import org.mifosplatform.portfolio.charge.domain.DisbursementChargeType;
 
 public class ChargeEnumerations {
 
@@ -64,6 +63,10 @@ public class ChargeEnumerations {
             case OVERDRAFT_FEE:
                 optionData = new EnumOptionData(ChargeTimeType.OVERDRAFT_FEE.getValue().longValue(),
                         ChargeTimeType.OVERDRAFT_FEE.getCode(), "Overdraft Fee");
+            break;
+            case TRANCHE_DISBURSEMENT:
+                optionData = new EnumOptionData(ChargeTimeType.TRANCHE_DISBURSEMENT.getValue().longValue(),
+                        ChargeTimeType.TRANCHE_DISBURSEMENT.getCode(), "Tranche Disbursement");
             break;
             default:
                 optionData = new EnumOptionData(ChargeTimeType.INVALID.getValue().longValue(), ChargeTimeType.INVALID.getCode(), "Invalid");
@@ -148,23 +151,4 @@ public class ChargeEnumerations {
         return optionData;
     }
     
-    public static EnumOptionData disbursementChargeType(final int id) {
-    	return disbursementChargeType(DisbursementChargeType.fromInt(id));
-    }	
-    
-    public static EnumOptionData disbursementChargeType(final DisbursementChargeType type) {
-        EnumOptionData optionData = null;
-        switch (type) {
-            case WITH_EACH_DISBURSEMENT:
-                optionData = new EnumOptionData(DisbursementChargeType.WITH_EACH_DISBURSEMENT.getValue().longValue(),
-                        DisbursementChargeType.WITH_EACH_DISBURSEMENT.getCode(), "With Each Disbursement");
-            break;
-            default:
-                optionData = new EnumOptionData(DisbursementChargeType.FIRST_DISBURSEMENT.getValue().longValue(), DisbursementChargeType.FIRST_DISBURSEMENT.getCode(),
-                        "First Disbursement");
-            break;
-        }
-        return optionData;
-    }
-
 }

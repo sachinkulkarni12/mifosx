@@ -15,7 +15,6 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 
 import org.apache.commons.lang.StringUtils;
 import org.joda.time.Days;
@@ -58,7 +57,6 @@ import org.mifosplatform.portfolio.charge.data.ChargeData;
 import org.mifosplatform.portfolio.charge.domain.Charge;
 import org.mifosplatform.portfolio.charge.domain.ChargeCalculationType;
 import org.mifosplatform.portfolio.charge.domain.ChargeTimeType;
-import org.mifosplatform.portfolio.charge.domain.DisbursementChargeType;
 import org.mifosplatform.portfolio.charge.service.ChargeReadPlatformService;
 import org.mifosplatform.portfolio.client.data.ClientData;
 import org.mifosplatform.portfolio.client.domain.ClientEnumerations;
@@ -85,7 +83,6 @@ import org.mifosplatform.portfolio.loanaccount.data.LoanTransactionEnumData;
 import org.mifosplatform.portfolio.loanaccount.data.PaidInAdvanceData;
 import org.mifosplatform.portfolio.loanaccount.data.RepaymentScheduleRelatedLoanData;
 import org.mifosplatform.portfolio.loanaccount.domain.Loan;
-import org.mifosplatform.portfolio.loanaccount.domain.LoanCharge;
 import org.mifosplatform.portfolio.loanaccount.domain.LoanRepaymentScheduleInstallment;
 import org.mifosplatform.portfolio.loanaccount.domain.LoanRepaymentScheduleTransactionProcessorFactory;
 import org.mifosplatform.portfolio.loanaccount.domain.LoanRepository;
@@ -1493,17 +1490,17 @@ public class LoanReadPlatformServiceImpl implements LoanReadPlatformService {
     }
 
     @Override
-    public Collection<DisbursementData> retrieveLoanDisbursementDetails(final Long loanId) {
+    public Collection<DisbursementData> retrieveLoanDisbursementDetails
+    (final Long loanId) {
         final LoanDisbursementDetailMapper rm = new LoanDisbursementDetailMapper();
-        final String sql = "select " + rm.schema() + " where dd.loan_id=? AND lc.is_active=1 group by dd.id order by dd.expected_disburse_date";
+        final String sql = "select " + rm.schema() + " where dd.loan_id=? group by dd.id order by dd.expected_disburse_date";
         return this.jdbcTemplate.query(sql, rm, new Object[] { loanId });
     }
 
     private static final class LoanDisbursementDetailMapper implements RowMapper<DisbursementData> {
 
         public String schema() {
-
-        	return "dd.id as id,dd.expected_disburse_date as expectedDisbursementdate, dd.disbursedon_date as actualDisbursementdate,dd.principal as principal,sum(lc.amount) chargeAmount,group_concat(lc.id) loanChargeId "+
+        	return "dd.id as id,dd.expected_disburse_date as expectedDisbursementdate, dd.disbursedon_date as actualDisbursementdate,dd.principal as principal,if(lc.is_active=1,sum(lc.amount) ,false) chargeAmount,group_concat(lc.id) loanChargeId "+
         	"from m_loan l left join m_loan_disbursement_detail dd on dd.loan_id = l.id left join m_loan_tranche_disbursement_charge tdc on tdc.disbursement_detail_id=dd.id " +
         	"left join m_loan_charge lc on  lc.id=tdc.loan_charge_id";
         }

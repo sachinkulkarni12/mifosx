@@ -106,7 +106,7 @@ public class LoanChargeReadPlatformServiceImpl implements LoanChargeReadPlatform
             final int chargeTime = rs.getInt("chargeTime");
             final EnumOptionData chargeTimeType = ChargeEnumerations.chargeTimeType(chargeTime);
 
-            final LocalDate dueAsOfDate = JdbcSupport.getLocalDate(rs, "dueAsOfDate");
+            LocalDate dueAsOfDate = JdbcSupport.getLocalDate(rs, "dueAsOfDate");
 
             final int chargeCalculation = rs.getInt("chargeCalculation");
             final EnumOptionData chargeCalculationType = ChargeEnumerations.chargeCalculationType(chargeCalculation);
@@ -120,10 +120,14 @@ public class LoanChargeReadPlatformServiceImpl implements LoanChargeReadPlatform
             final BigDecimal maxCap = rs.getBigDecimal("maxCap");
             final BigDecimal amountOrPercentage = rs.getBigDecimal("amountOrPercentage");
             final LocalDate disbursementDate = JdbcSupport.getLocalDate(rs, "disbursementDate");
+            
+            if(disbursementDate != null){
+            	dueAsOfDate = disbursementDate;
+            }
 
             return new LoanChargeData(id, chargeId, name, currency, amount, amountPaid, amountWaived, amountWrittenOff, amountOutstanding,
                     chargeTimeType, dueAsOfDate, chargeCalculationType, percentageOf, amountPercentageAppliedTo, penalty, paymentMode,
-                    paid, waived, null, minCap, maxCap, amountOrPercentage, null, disbursementDate);
+                    paid, waived, null, minCap, maxCap, amountOrPercentage, null);
         }
     }
 
@@ -141,11 +145,10 @@ public class LoanChargeReadPlatformServiceImpl implements LoanChargeReadPlatform
         final List<EnumOptionData> savingsChargeTimeTypeOptions = this.chargeDropdownReadPlatformService
                 .retrieveSavingsCollectionTimeTypes();
         final List<EnumOptionData> feeFrequencyOptions = this.dropdownReadPlatformService.retrievePeriodFrequencyTypeOptions();
-        final List<EnumOptionData> disbursementChargeTypeOptions= this.chargeDropdownReadPlatformService.retrieveLoanDisbursementChargesType();
-
+  
         return ChargeData.template(null, allowedChargeCalculationTypeOptions, null, allowedChargeTimeOptions, null,
                 loansChargeCalculationTypeOptions, loansChargeTimeTypeOptions, savingsChargeCalculationTypeOptions,
-                savingsChargeTimeTypeOptions, feeFrequencyOptions, disbursementChargeTypeOptions);
+                savingsChargeTimeTypeOptions, feeFrequencyOptions);
     }
 
     @Override

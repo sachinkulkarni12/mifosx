@@ -290,7 +290,7 @@ public class LoanAssembler {
         return loanApplication;
     }
 
-    private Set<LoanDisbursementDetails> fetchDisbursementData(final JsonObject command) {
+    public Set<LoanDisbursementDetails> fetchDisbursementData(final JsonObject command) {
         final Locale locale = this.fromApiJsonHelper.extractLocaleParameter(command);
         final String dateFormat = this.fromApiJsonHelper.extractDateFormatParameter(command);
         Set<LoanDisbursementDetails> disbursementDatas = new HashSet<>();

@@ -32,7 +32,6 @@ import org.springframework.stereotype.Component;
 
 import com.google.gson.JsonElement;
 import com.google.gson.reflect.TypeToken;
-import org.mifosplatform.portfolio.charge.domain.DisbursementChargeType;
 
 @Component
 public final class ChargeDefinitionCommandFromApiJsonDeserializer {
@@ -42,7 +41,7 @@ public final class ChargeDefinitionCommandFromApiJsonDeserializer {
      */
     private final Set<String> supportedParameters = new HashSet<>(Arrays.asList("name", "amount", "locale", "currencyCode",
             "currencyOptions", "chargeAppliesTo", "chargeTimeType", "chargeCalculationType", "chargeCalculationTypeOptions", "penalty",
-            "active", "chargePaymentMode", "feeOnMonthDay", "feeInterval", "monthDayFormat", "minCap", "maxCap", "feeFrequency", "disbursementChargeType"));
+            "active", "chargePaymentMode", "feeOnMonthDay", "feeInterval", "monthDayFormat", "minCap", "maxCap", "feeFrequency"));
 
     private final FromJsonHelper fromApiJsonHelper;
 
@@ -104,13 +103,6 @@ public final class ChargeDefinitionCommandFromApiJsonDeserializer {
                         .isOneOfTheseValues(ChargeCalculationType.validValuesForLoan());
             }
             
-            final Integer disbursementChargeType = this.fromApiJsonHelper.extractIntegerSansLocaleNamed("disbursementChargeType", element);
-            baseDataValidator.reset().parameter("disbursementChargeType").value(disbursementChargeType).ignoreIfNull();
-            if(disbursementChargeType != null){
-                baseDataValidator.reset().parameter("disbursementChargeType").value(disbursementChargeType)
-                .isOneOfTheseValues(DisbursementChargeType.validValues());
-            }
-
         } else if (appliesTo.isSavingsCharge()) {
             // savings applicable validation
             final Integer chargeTimeType = this.fromApiJsonHelper.extractIntegerSansLocaleNamed("chargeTimeType", element);
@@ -246,7 +238,7 @@ public final class ChargeDefinitionCommandFromApiJsonDeserializer {
         if (this.fromApiJsonHelper.parameterExists("chargeCalculationType", element)) {
             final Integer chargeCalculationType = this.fromApiJsonHelper.extractIntegerNamed("chargeCalculationType", element,
                     Locale.getDefault());
-            baseDataValidator.reset().parameter("chargeCalculationType").value(chargeCalculationType).notNull().inMinMaxRange(1, 6);
+            baseDataValidator.reset().parameter("chargeCalculationType").value(chargeCalculationType).notNull().inMinMaxRange(1, 5);
         }
 
         if (this.fromApiJsonHelper.parameterExists("chargePaymentMode", element)) {

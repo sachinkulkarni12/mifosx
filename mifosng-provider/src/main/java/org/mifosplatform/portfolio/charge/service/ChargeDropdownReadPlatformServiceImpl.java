@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import org.mifosplatform.portfolio.charge.domain.DisbursementChargeType;
+
 
 import static org.mifosplatform.portfolio.charge.service.ChargeEnumerations.*;
 
@@ -73,7 +73,8 @@ public class ChargeDropdownReadPlatformServiceImpl implements ChargeDropdownRead
     @Override
     public List<EnumOptionData> retrieveLoanCollectionTimeTypes() {
         return Arrays.asList(chargeTimeType(ChargeTimeType.DISBURSEMENT), chargeTimeType(ChargeTimeType.SPECIFIED_DUE_DATE),
-                chargeTimeType(ChargeTimeType.INSTALMENT_FEE), chargeTimeType(ChargeTimeType.OVERDUE_INSTALLMENT));
+                chargeTimeType(ChargeTimeType.INSTALMENT_FEE), chargeTimeType(ChargeTimeType.OVERDUE_INSTALLMENT),
+                chargeTimeType(ChargeTimeType.TRANCHE_DISBURSEMENT));
     }
 
     @Override
@@ -90,9 +91,4 @@ public class ChargeDropdownReadPlatformServiceImpl implements ChargeDropdownRead
                 chargeTimeType(ChargeTimeType.MONTHLY_FEE), chargeTimeType(ChargeTimeType.WEEKLY_FEE),
                 chargeTimeType(ChargeTimeType.OVERDRAFT_FEE));
     }
-
-	@Override
-	public List<EnumOptionData> retrieveLoanDisbursementChargesType() {
-		return Arrays.asList(disbursementChargeType(DisbursementChargeType.FIRST_DISBURSEMENT), disbursementChargeType(DisbursementChargeType.WITH_EACH_DISBURSEMENT));
-	}
 }

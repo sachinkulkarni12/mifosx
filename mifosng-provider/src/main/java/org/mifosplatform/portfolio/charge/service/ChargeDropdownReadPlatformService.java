@@ -27,6 +27,4 @@ public interface ChargeDropdownReadPlatformService {
 
     List<EnumOptionData> retrieveSavingsCollectionTimeTypes();
     
-    List<EnumOptionData> retrieveLoanDisbursementChargesType();
-
 }

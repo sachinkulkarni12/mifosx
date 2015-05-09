@@ -117,11 +117,10 @@ public class ChargeReadPlatformServiceImpl implements ChargeReadPlatformService 
         final List<EnumOptionData> savingsChargeTimeTypeOptions = this.chargeDropdownReadPlatformService
                 .retrieveSavingsCollectionTimeTypes();
         final List<EnumOptionData> feeFrequencyOptions = this.dropdownReadPlatformService.retrievePeriodFrequencyTypeOptions();
-        final List<EnumOptionData> disbursementChargeTypeOptions= this.chargeDropdownReadPlatformService.retrieveLoanDisbursementChargesType();
-
+     
         return ChargeData.template(currencyOptions, allowedChargeCalculationTypeOptions, allowedChargeAppliesToOptions,
                 allowedChargeTimeOptions, chargePaymentOptions, loansChargeCalculationTypeOptions, loansChargeTimeTypeOptions,
-                savingsChargeCalculationTypeOptions, savingsChargeTimeTypeOptions, feeFrequencyOptions, disbursementChargeTypeOptions);
+                savingsChargeCalculationTypeOptions, savingsChargeTimeTypeOptions, feeFrequencyOptions);
     }
 
     @Override
@@ -246,8 +245,7 @@ public class ChargeReadPlatformServiceImpl implements ChargeReadPlatformService 
                     + "c.is_active as active, oc.name as currencyName, oc.decimal_places as currencyDecimalPlaces, "
                     + "oc.currency_multiplesof as inMultiplesOf, oc.display_symbol as currencyDisplaySymbol, "
                     + "oc.internationalized_name_code as currencyNameCode, c.fee_on_day as feeOnDay, c.fee_on_month as feeOnMonth, "
-                    + "c.fee_interval as feeInterval, c.fee_frequency as feeFrequency,c.min_cap as minCap,c.max_cap as maxCap, "
-                    + "c.disbursement_charge_type_enum as disbursementCharge "
+                    + "c.fee_interval as feeInterval, c.fee_frequency as feeFrequency,c.min_cap as minCap,c.max_cap as maxCap "
                     + "from m_charge c " + "join m_organisation_currency oc on c.currency_code = oc.code";
         }
 
@@ -305,11 +303,9 @@ public class ChargeReadPlatformServiceImpl implements ChargeReadPlatformService 
             final BigDecimal minCap = rs.getBigDecimal("minCap");
             final BigDecimal maxCap = rs.getBigDecimal("maxCap");
             
-            final int disbursementCharge = rs.getInt("disbursementCharge");
-            final EnumOptionData disbursementChargeType = ChargeEnumerations.disbursementChargeType(disbursementCharge);
-
+   
             return ChargeData.instance(id, name, amount, currency, chargeTimeType, chargeAppliesToType, chargeCalculationType,
-                    chargePaymentMode, feeOnMonthDay, feeInterval, penalty, active, minCap, maxCap, feeFrequencyType, disbursementChargeType);
+                    chargePaymentMode, feeOnMonthDay, feeInterval, penalty, active, minCap, maxCap, feeFrequencyType);
         }
     }
 
