@@ -49,6 +49,9 @@ import org.mifosplatform.portfolio.group.data.StaffCenterData;
 import org.mifosplatform.portfolio.group.domain.GroupTypes;
 import org.mifosplatform.portfolio.group.domain.GroupingTypeEnumerations;
 import org.mifosplatform.portfolio.group.exception.CenterNotFoundException;
+import org.mifosplatform.portfolio.village.data.VillageData;
+import org.mifosplatform.portfolio.village.service.VillageReadPlatformService;
+import org.mifosplatform.portfolio.village.service.VillageReadPlatformServiceImpl;
 import org.mifosplatform.useradministration.domain.AppUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;
@@ -64,6 +67,7 @@ public class CenterReadPlatformServiceImpl implements CenterReadPlatformService 
     private final PlatformSecurityContext context;
     private final ClientReadPlatformService clientReadPlatformService;
     private final OfficeReadPlatformService officeReadPlatformService;
+    private final VillageReadPlatformService villageReadPlatformService;
     private final StaffReadPlatformService staffReadPlatformService;
     private final CodeValueReadPlatformService codeValueReadPlatformService;
 
@@ -81,12 +85,14 @@ public class CenterReadPlatformServiceImpl implements CenterReadPlatformService 
     @Autowired
     public CenterReadPlatformServiceImpl(final PlatformSecurityContext context, final RoutingDataSource dataSource,
             final ClientReadPlatformService clientReadPlatformService, final OfficeReadPlatformService officeReadPlatformService,
-            final StaffReadPlatformService staffReadPlatformService, final CodeValueReadPlatformService codeValueReadPlatformService,
+            final VillageReadPlatformService villageReadPlatformService, final StaffReadPlatformService staffReadPlatformService,
+            final CodeValueReadPlatformService codeValueReadPlatformService,
             final PaginationParametersDataValidator paginationParametersDataValidator) {
         this.context = context;
         this.clientReadPlatformService = clientReadPlatformService;
         this.jdbcTemplate = new JdbcTemplate(dataSource);
         this.officeReadPlatformService = officeReadPlatformService;
+        this.villageReadPlatformService = villageReadPlatformService;
         this.staffReadPlatformService = staffReadPlatformService;
         this.codeValueReadPlatformService = codeValueReadPlatformService;
         this.paginationParametersDataValidator = paginationParametersDataValidator;
@@ -393,7 +399,8 @@ public class CenterReadPlatformServiceImpl implements CenterReadPlatformService 
     }
 
     @Override
-    public CenterData retrieveTemplate(final Long officeId, final boolean staffInSelectedOfficeOnly) {
+    public CenterData retrieveTemplate(final Long officeId, final Long villageId, final boolean villagesInSelectedOfficeOnly,
+            final boolean staffInSelectedOfficeOnly) {
 
         final Long officeIdDefaulted = defaultToUsersOfficeIfNull(officeId);
 
@@ -412,6 +419,20 @@ public class CenterReadPlatformServiceImpl implements CenterReadPlatformService 
             staffOptions = null;
         }
 
+        Collection<VillageData> villageOptions = null;
+        if (villagesInSelectedOfficeOnly) {
+            villageOptions = this.villageReadPlatformService.retrieveVillagesForLookup(officeIdDefaulted);
+        }
+
+        if (CollectionUtils.isEmpty(villageOptions)) {
+            villageOptions = null;
+        }
+
+        VillageData villageCounter = null;
+        if (villageId != null) {
+            villageCounter = this.villageReadPlatformService.getCountValue(villageId);
+        }
+
         Collection<GroupGeneralData> groupMembersOptions = retrieveAllGroupsForCenterDropdown(officeIdDefaulted);
         if (CollectionUtils.isEmpty(groupMembersOptions)) {
             groupMembersOptions = null;
@@ -420,7 +441,8 @@ public class CenterReadPlatformServiceImpl implements CenterReadPlatformService 
         // final boolean clientPendingApprovalAllowed =
         // this.configurationDomainService.isClientPendingApprovalAllowedEnabled();
 
-        return CenterData.template(officeIdDefaulted, new LocalDate(), officeOptions, staffOptions, groupMembersOptions);
+        return CenterData.template(officeIdDefaulted, new LocalDate(), officeOptions, villageOptions, villageCounter, staffOptions,
+                groupMembersOptions);
     }
 
     private Collection<GroupGeneralData> retrieveAllGroupsForCenterDropdown(final Long officeId) {

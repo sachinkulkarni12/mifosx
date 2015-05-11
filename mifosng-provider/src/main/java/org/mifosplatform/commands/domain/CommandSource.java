@@ -207,7 +207,7 @@ public class CommandSource extends AbstractPersistable<Long> {
     public Long getGroupId() {
         return groupId;
     }
-
+    
     /**
      * @return the loanId
      */

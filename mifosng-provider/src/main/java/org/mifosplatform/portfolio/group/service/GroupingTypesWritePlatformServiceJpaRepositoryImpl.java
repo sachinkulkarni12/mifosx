@@ -60,6 +60,8 @@ import org.mifosplatform.portfolio.note.domain.Note;
 import org.mifosplatform.portfolio.note.domain.NoteRepository;
 import org.mifosplatform.portfolio.savings.domain.SavingsAccount;
 import org.mifosplatform.portfolio.savings.domain.SavingsAccountRepository;
+import org.mifosplatform.portfolio.village.domain.Village;
+import org.mifosplatform.portfolio.village.domain.VillageRepositoryWrapper;
 import org.mifosplatform.useradministration.domain.AppUser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -78,6 +80,7 @@ public class GroupingTypesWritePlatformServiceJpaRepositoryImpl implements Group
     private final PlatformSecurityContext context;
     private final GroupRepositoryWrapper groupRepository;
     private final ClientRepositoryWrapper clientRepositoryWrapper;
+    private final VillageRepositoryWrapper villageRepository;
     private final OfficeRepository officeRepository;
     private final StaffRepositoryWrapper staffRepository;
     private final NoteRepository noteRepository;
@@ -94,7 +97,8 @@ public class GroupingTypesWritePlatformServiceJpaRepositoryImpl implements Group
 
     @Autowired
     public GroupingTypesWritePlatformServiceJpaRepositoryImpl(final PlatformSecurityContext context,
-            final GroupRepositoryWrapper groupRepository, final ClientRepositoryWrapper clientRepositoryWrapper,
+            final GroupRepositoryWrapper groupRepository, final ClientRepositoryWrapper clientRepositoryWrapper, 
+            final VillageRepositoryWrapper villageRepository,  
             final OfficeRepository officeRepository, final StaffRepositoryWrapper staffRepository, final NoteRepository noteRepository,
             final GroupLevelRepository groupLevelRepository, final GroupingTypesDataValidator fromApiJsonDeserializer,
             final LoanRepository loanRepository, final SavingsAccountRepository savingsRepository,
@@ -104,6 +108,7 @@ public class GroupingTypesWritePlatformServiceJpaRepositoryImpl implements Group
         this.context = context;
         this.groupRepository = groupRepository;
         this.clientRepositoryWrapper = clientRepositoryWrapper;
+        this.villageRepository = villageRepository;
         this.officeRepository = officeRepository;
         this.staffRepository = staffRepository;
         this.noteRepository = noteRepository;
@@ -152,7 +157,9 @@ public class GroupingTypesWritePlatformServiceJpaRepositoryImpl implements Group
             final Set<Client> clientMembers = assembleSetOfClients(officeId, command);
 
             final Set<Group> groupMembers = assembleSetOfChildGroups(officeId, command);
-
+            
+            final Village village = retrieveVillage(command);
+            
             final boolean active = command.booleanPrimitiveValueOfParameterNamed(GroupingTypesApiConstants.activeParamName);
             LocalDate submittedOnDate = new LocalDate();
             if (active && submittedOnDate.isAfter(activationDate)) {
@@ -164,6 +171,7 @@ public class GroupingTypesWritePlatformServiceJpaRepositoryImpl implements Group
 
             final Group newGroup = Group.newGroup(groupOffice, staff, parentGroup, groupLevel, name, externalId, active, activationDate,
                     clientMembers, groupMembers, submittedOnDate, currentUser);
+            newGroup.setVillage(village);
 
             boolean rollbackTransaction = false;
             if (newGroup.isActive()) {
@@ -173,7 +181,7 @@ public class GroupingTypesWritePlatformServiceJpaRepositoryImpl implements Group
                 }
 
                 if (newGroup.isCenter()) {
-                    final CommandWrapper commandWrapper = new CommandWrapperBuilder().activateCenter(null).build();
+                    final CommandWrapper commandWrapper = new CommandWrapperBuilder().associateCentersToVillage(newGroup.getId()).build();
                     rollbackTransaction = this.commandProcessingService.validateCommand(commandWrapper, currentUser);
                 } else {
                     final CommandWrapper commandWrapper = new CommandWrapperBuilder().activateGroup(null).build();
@@ -196,6 +204,11 @@ public class GroupingTypesWritePlatformServiceJpaRepositoryImpl implements Group
             newGroup.generateHierarchy();
 
             this.groupRepository.saveAndFlush(newGroup);
+            if (newGroup.isCenter()) {
+                // Increment Village Counter
+                village.incrementCount();
+                this.villageRepository.saveAndFlush(village);
+            }
             newGroup.captureStaffHistoryDuringCenterCreation(staff, activationDate);
             return new CommandProcessingResultBuilder() //
                     .withCommandId(command.commandId()) //
@@ -654,6 +667,14 @@ public class GroupingTypesWritePlatformServiceJpaRepositoryImpl implements Group
         }
 
         return childGroups;
+    }
+    
+    private Village retrieveVillage(final JsonCommand command) {
+        final Long villageId = command.longValueOfParameterNamed(GroupingTypesApiConstants.villageIdParamName);
+        
+        final Village village = this.villageRepository.findOneWithNotFoundDetection(villageId);
+        
+        return village;
     }
 
     /*

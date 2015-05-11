@@ -17,6 +17,8 @@ public class CommandProcessingResultBuilder {
     private Long officeId;
     private Long groupId;
     private Long clientId;
+    private Long centerId;
+    private Long villageId;
     private Long loanId;
     private Long savingsId;
     private String resourceIdentifier;
@@ -28,7 +30,7 @@ public class CommandProcessingResultBuilder {
     private boolean rollbackTransaction = false;
 
     public CommandProcessingResult build() {
-        return CommandProcessingResult.fromDetails(this.commandId, this.officeId, this.groupId, this.clientId, this.loanId, this.savingsId,
+        return CommandProcessingResult.fromDetails(this.commandId, this.officeId, this.groupId, this.clientId, this.centerId, this.villageId, this.loanId, this.savingsId,
                 this.resourceIdentifier, this.entityId, this.transactionId, this.changes, this.productId, this.rollbackTransaction,
                 this.subEntityId);
     }
@@ -70,6 +72,16 @@ public class CommandProcessingResultBuilder {
 
     public CommandProcessingResultBuilder withGroupId(final Long withGroupId) {
         this.groupId = withGroupId;
+        return this;
+    }
+    
+    public CommandProcessingResultBuilder withCenterId(final Long withCenterId) {
+        this.centerId = withCenterId;
+        return this;
+    }
+    
+    public CommandProcessingResultBuilder withVillageId(final Long withVillageId) {
+        this.villageId = withVillageId;
         return this;
     }
 

@@ -37,4 +37,6 @@ public interface GroupingTypesWritePlatformService {
     CommandProcessingResult associateGroupsToCenter(final Long centerId, final JsonCommand command);
 
     CommandProcessingResult disassociateGroupsToCenter(final Long centerId, final JsonCommand command);
+    
+   // CommandProcessingResult associateCentersToVillage(Long villageId, JsonCommand command);
 }

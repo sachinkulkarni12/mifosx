@@ -8,6 +8,7 @@ package org.mifosplatform.portfolio.group.domain;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -29,6 +30,8 @@ import javax.persistence.TemporalType;
 
 import org.apache.commons.lang.ObjectUtils;
 import org.apache.commons.lang.StringUtils;
+import org.hibernate.annotations.LazyCollection;
+import org.hibernate.annotations.LazyCollectionOption;
 import org.joda.time.LocalDate;
 import org.mifosplatform.infrastructure.codes.domain.CodeValue;
 import org.mifosplatform.infrastructure.core.api.JsonCommand;
@@ -45,6 +48,7 @@ import org.mifosplatform.portfolio.group.exception.ClientNotInGroupException;
 import org.mifosplatform.portfolio.group.exception.GroupExistsInCenterException;
 import org.mifosplatform.portfolio.group.exception.GroupNotExistsInCenterException;
 import org.mifosplatform.portfolio.group.exception.InvalidGroupStateTransitionException;
+import org.mifosplatform.portfolio.village.domain.Village;
 import org.mifosplatform.useradministration.domain.AppUser;
 import org.springframework.data.jpa.domain.AbstractPersistable;
 
@@ -98,6 +102,10 @@ public final class Group extends AbstractPersistable<Long> {
     @ManyToMany
     @JoinTable(name = "m_group_client", joinColumns = @JoinColumn(name = "group_id"), inverseJoinColumns = @JoinColumn(name = "client_id"))
     private Set<Client> clientMembers = new HashSet<>();
+    
+    @ManyToOne
+    @JoinTable(name="chai_village_center", joinColumns = @JoinColumn(name="center_id"), inverseJoinColumns = @JoinColumn(name = "village_id"))
+    private Village village;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "closure_reason_cv_id", nullable = true)
@@ -127,11 +135,13 @@ public final class Group extends AbstractPersistable<Long> {
         this.name = null;
         this.externalId = null;
         this.clientMembers = new HashSet<>();
+        // this.villages = new HashSet<>();
     }
 
     public static Group newGroup(final Office office, final Staff staff, final Group parent, final GroupLevel groupLevel,
             final String name, final String externalId, final boolean active, final LocalDate activationDate,
-            final Set<Client> clientMembers, final Set<Group> groupMembers, final LocalDate submittedOnDate, final AppUser currentUser) {
+            final Set<Client> clientMembers, final Set<Group> groupMembers,  
+            final LocalDate submittedOnDate, final AppUser currentUser) {
 
         // By default new group is created in PENDING status, unless explicitly
         // status is set to active
@@ -148,7 +158,8 @@ public final class Group extends AbstractPersistable<Long> {
 
     private Group(final Office office, final Staff staff, final Group parent, final GroupLevel groupLevel, final String name,
             final String externalId, final GroupingTypeStatus status, final LocalDate activationDate, final Set<Client> clientMembers,
-            final Set<Group> groupMembers, final LocalDate submittedOnDate, final AppUser currentUser) {
+            final Set<Group> groupMembers, final LocalDate submittedOnDate,
+            final AppUser currentUser) {
 
         final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
 
@@ -175,13 +186,17 @@ public final class Group extends AbstractPersistable<Long> {
         if (groupMembers != null) {
             this.groupMembers.addAll(groupMembers);
         }
+        
+        /*if (centerMembers != null) {
+            this.centerMembers.addA
+        }*/
 
         this.submittedOnDate = submittedOnDate.toDate();
         this.submittedBy = currentUser;
         this.staffHistory = null;
 
         associateClients(clientMembers);
-
+                
         /*
          * Always keep status change at the bottom, as status change rule
          * depends on the attribute's value
@@ -342,6 +357,10 @@ public final class Group extends AbstractPersistable<Long> {
         }
 
         return differences;
+    }
+
+    public void setVillage (final Village village) {
+        this.village = village;
     }
 
     public boolean hasClientAsMember(final Client client) {
