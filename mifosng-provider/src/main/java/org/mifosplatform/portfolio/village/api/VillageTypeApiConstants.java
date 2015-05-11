@@ -19,13 +19,14 @@ public class VillageTypeApiConstants {
     public static final String localeParamName = "locale";
     public static final String dateFormatParamName = "dateFormat";
     public static final String submittedOnDateParamName = "submittedOnDate";
-    public static String activationDateParamName = "activationDate";
-    public static String activeParamName = "active";
+    public static final String activationDateParamName = "activatedOnDate";
+    public static final String activeParamName = "active";
     public static final String centerIdParamName = "centerId";
        
     public static final Set<String> VILLAGE_RESPONSE_DATA_PARAMETERS = new HashSet<>(Arrays.asList(idParamName, officeIdParamName, villageNameParamName,
              statusParamName, countParamName, localeParamName,dateFormatParamName, submittedOnDateParamName, activationDateParamName, 
              officeOptionsParamName));
 
-    public static final Set<String> VILLAGE_REQUEST_DATA_PARAMETERS = new HashSet<>(Arrays.asList(idParamName));
+    public static final Set<String> VILLAGE_CREATE_REQUEST_DATA_PARAMETERS = new HashSet<>(Arrays.asList(officeIdParamName, villageNameParamName, 
+            countParamName, activeParamName, localeParamName,dateFormatParamName, activationDateParamName , submittedOnDateParamName));
 }

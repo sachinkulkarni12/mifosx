@@ -2,17 +2,24 @@ package org.mifosplatform.portfolio.village.domain;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.JoinColumn;
+import javax.persistence.JoinTable;
+import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
+import javax.persistence.OneToMany;
 import javax.persistence.Table;
 import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
 
 import org.apache.commons.lang.ObjectUtils;
+import org.hibernate.annotations.LazyCollection;
+import org.hibernate.annotations.LazyCollectionOption;
 import org.joda.time.LocalDate;
 import org.mifosplatform.infrastructure.core.data.ApiParameterError;
 import org.mifosplatform.infrastructure.core.exception.PlatformApiDataValidationException;
@@ -56,18 +63,18 @@ public class Village extends AbstractPersistable<Long> {
     @Column(name="status")
     private Integer status;
     
-    /*
+    
     @LazyCollection(LazyCollectionOption.FALSE)
-    @ManyToMany
+    @OneToMany
     @JoinTable(name="chai_village_center", joinColumns= @JoinColumn(name="village_id"), inverseJoinColumns = @JoinColumn(name="center_id"))
-    private final Set<Group> centerMembers = new HashSet<>(); 
-    */
+    private Set<Group> centerMembers; 
+    
     
     public Village() {
     }
 
     public static Village newVillage(final Office office, final String villageName, final Long count, final AppUser currentUser,
-            final boolean active, final LocalDate activationDate, final LocalDate submittedOnDate, final Group centerOfVillage){
+            final boolean active, final LocalDate activationDate, final LocalDate submittedOnDate){
         
         VillageTypeStatus status = VillageTypeStatus.PENDING;
         LocalDate villageActivaionDate = null;
@@ -76,11 +83,11 @@ public class Village extends AbstractPersistable<Long> {
             villageActivaionDate = activationDate;
         }
         
-        return new Village(office, villageName, count, currentUser, status, activationDate, submittedOnDate, centerOfVillage);
+        return new Village(office, villageName, count, currentUser, status, activationDate, submittedOnDate);
     }
     
     private Village(final Office office, final String villageName, final Long count, final AppUser currentUser, final VillageTypeStatus status,
-            final LocalDate activationDate, final LocalDate submittedOnDate, final Group centerOfVillage){
+            final LocalDate activationDate, final LocalDate submittedOnDate){
        
         final List<ApiParameterError> dataValidationErorrs = new ArrayList<>();
         this.officeId = office;
@@ -88,14 +95,16 @@ public class Village extends AbstractPersistable<Long> {
         this.count = count;
         this.activedBy = currentUser;
         this.submittedOnDate = submittedOnDate.toDate();
+        this.submitedBy = currentUser;
         
-        if (centerOfVillage != null) {
-            // this.centerMembers.add(centerOfVillage);
-        }
-       
         setStatus(activationDate, currentUser, status, dataValidationErorrs);
         
         throwExceptionIfErrors(dataValidationErorrs);
+    }
+    
+    public void setCenter(final Group centerDetails){
+        this.centerMembers = new HashSet<>();
+        this.centerMembers.add(centerDetails);
     }
     
     private void setStatus(final LocalDate activationDate, final AppUser loginUser, final VillageTypeStatus status, List<ApiParameterError> dataValidationErrors){

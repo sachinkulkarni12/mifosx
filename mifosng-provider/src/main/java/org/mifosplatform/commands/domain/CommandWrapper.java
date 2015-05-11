@@ -714,6 +714,10 @@ public class CommandWrapper {
     public boolean isCenterResource() {
         return this.entityName.equalsIgnoreCase("CENTER");
     }
+    
+    public boolean isVillageResource() {
+        return this.entityName.equalsIgnoreCase("VILLAGE");
+    }
 
     public boolean isSaveCenterCollectionSheet() {
         return this.entityName.equalsIgnoreCase("CENTER") && this.actionName.equalsIgnoreCase("SAVECOLLECTIONSHEET");
