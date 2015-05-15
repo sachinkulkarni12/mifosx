@@ -10,7 +10,6 @@ import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
-import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
 import javax.persistence.Table;
@@ -18,9 +17,11 @@ import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
 
 import org.apache.commons.lang.ObjectUtils;
+import org.apache.commons.lang.StringUtils;
 import org.hibernate.annotations.LazyCollection;
 import org.hibernate.annotations.LazyCollectionOption;
 import org.joda.time.LocalDate;
+import org.mifosplatform.infrastructure.core.api.JsonCommand;
 import org.mifosplatform.infrastructure.core.data.ApiParameterError;
 import org.mifosplatform.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.mifosplatform.infrastructure.core.service.DateUtils;
@@ -34,15 +35,33 @@ import org.springframework.data.jpa.domain.AbstractPersistable;
 @Table(name = "chai_villages")
 public class Village extends AbstractPersistable<Long> {
 
+    @Column(name = "external_id")
+    private String externalId;
+    
     @ManyToOne
     @JoinColumn(name= "office_id")
     private Office officeId;
+    
+    @Column(name = "village_code")
+    private String villageCode;
     
     @Column(name="village_name")
     private String villageName;
     
     @Column(name="counter")
     private Long count;
+    
+    @Column(name = "taluk")
+    private String taluk;
+    
+    @Column(name = "district")
+    private String district;
+    
+    @Column(name = "pincode")
+    private Long pinCode;
+    
+    @Column(name = "state")
+    private String state;
     
     @Column(name="activatedon_date", nullable = true)
     @Temporal(TemporalType.DATE)
@@ -74,7 +93,14 @@ public class Village extends AbstractPersistable<Long> {
     }
 
     public static Village newVillage(final Office office, final String villageName, final Long count, final AppUser currentUser,
-            final boolean active, final LocalDate activationDate, final LocalDate submittedOnDate){
+            final boolean active, final LocalDate activationDate, final LocalDate submittedOnDate, final JsonCommand command){
+        
+        final String externalId = command.stringValueOfParameterNamed(VillageTypeApiConstants.externalIdParamName);
+        final String villageCode = command.stringValueOfParameterNamed(VillageTypeApiConstants.villageCodeParamName);
+        final String taluk = command.stringValueOfParameterNamed(VillageTypeApiConstants.talukParamName);
+        final String district = command.stringValueOfParameterNamed(VillageTypeApiConstants.districtParamName);
+        final String state = command.stringValueOfParameterNamed(VillageTypeApiConstants.stateParamName);
+        final Long pincode = command.longValueOfParameterNamed(VillageTypeApiConstants.pincodeParamName);
         
         VillageTypeStatus status = VillageTypeStatus.PENDING;
         LocalDate villageActivaionDate = null;
@@ -83,16 +109,28 @@ public class Village extends AbstractPersistable<Long> {
             villageActivaionDate = activationDate;
         }
         
-        return new Village(office, villageName, count, currentUser, status, activationDate, submittedOnDate);
+        return new Village(externalId, office, villageCode, villageName, count, taluk, district, pincode, state, currentUser, status, villageActivaionDate, submittedOnDate);
     }
     
-    private Village(final Office office, final String villageName, final Long count, final AppUser currentUser, final VillageTypeStatus status,
+    private Village(final String externalId, final Office office,final String villageCode, final String villageName, final Long count, final String taluk,
+            final String district, final Long pincode, final String state, final AppUser currentUser, final VillageTypeStatus status,
             final LocalDate activationDate, final LocalDate submittedOnDate){
        
         final List<ApiParameterError> dataValidationErorrs = new ArrayList<>();
+
+        if (StringUtils.isNotBlank(externalId)) {
+            this.externalId = externalId;
+        }else {
+            this.externalId = null;
+        }
         this.officeId = office;
+        this.villageCode = villageCode;
         this.villageName = villageName;
         this.count = count;
+        this.taluk = taluk;
+        this.district = district;
+        this.pinCode = pincode;
+        this.state = state;
         this.activedBy = currentUser;
         this.submittedOnDate = submittedOnDate.toDate();
         this.submitedBy = currentUser;

@@ -51,7 +51,6 @@ import org.mifosplatform.portfolio.group.domain.GroupingTypeEnumerations;
 import org.mifosplatform.portfolio.group.exception.CenterNotFoundException;
 import org.mifosplatform.portfolio.village.data.VillageData;
 import org.mifosplatform.portfolio.village.service.VillageReadPlatformService;
-import org.mifosplatform.portfolio.village.service.VillageReadPlatformServiceImpl;
 import org.mifosplatform.useradministration.domain.AppUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.EmptyResultDataAccessException;

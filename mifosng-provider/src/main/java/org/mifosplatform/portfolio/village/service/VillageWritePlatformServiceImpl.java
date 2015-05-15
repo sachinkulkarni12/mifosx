@@ -94,7 +94,7 @@ public class VillageWritePlatformServiceImpl implements VillageWritePlatformServ
                 submittedOnDate = command.localDateValueOfParameterNamed(VillageTypeApiConstants.submittedOnDateParamName);
             }
             
-            final Village newVillage = Village.newVillage(villageOffice, villageName, count, currentUser, active, activationDate, submittedOnDate);
+            final Village newVillage = Village.newVillage(villageOffice, villageName, count, currentUser, active, activationDate, submittedOnDate, command);
             
             if (centerOfVillage != null) {
                 newVillage.setCenter(centerOfVillage);
