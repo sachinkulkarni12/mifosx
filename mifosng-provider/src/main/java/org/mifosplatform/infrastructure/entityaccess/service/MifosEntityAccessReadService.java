@@ -15,17 +15,20 @@ import org.mifosplatform.infrastructure.entityaccess.domain.MifosEntityType;
 
 public interface MifosEntityAccessReadService {
 
-    Collection<MifosEntityAccessData> retrieveEntityAccessFor(Long entityId, MifosEntityType type, MifosEntityAccessType accessType,
-            MifosEntityType secondType, boolean includeAllOffices);
+    Collection<MifosEntityAccessData> retrieveEntityAccessFor(String entityIds, MifosEntityAccessType relationshipType,
+            boolean includeAllOffices);
 
-    String getSQLQueryInClause_WithListOfIDsForEntityAccess(Long entityId, MifosEntityType firstEntityType,
-            MifosEntityAccessType accessType, MifosEntityType secondEntityType, boolean includeAllOffices);
+    String getSQLQueryInClause_WithListOfIDsForEntityAccess(String entityIds, MifosEntityAccessType relationship, boolean includeAllOffices);
 
     String getSQLQueryInClauseIDList_ForLoanProductsForOffice(Long loanProductId, boolean includeAllOffices);
 
     String getSQLQueryInClauseIDList_ForSavingsProductsForOffice(Long savingsProductId, boolean includeAllOffices);
 
     String getSQLQueryInClauseIDList_ForChargesForOffice(Long officeId, boolean includeAllOffices);
+    
+    String getSQLQueryInClauseIDList_ForLoanProductsForRoles (String commaSeparatedRoleIds);
+    
+    String getSQLQueryInClauseIDList_ForSavingsProductsForRoles (String commaSeparatedRoleIds);
 
     Collection<MifosEntityRelationData> retrieveAllSupportedMappingTypes();
 

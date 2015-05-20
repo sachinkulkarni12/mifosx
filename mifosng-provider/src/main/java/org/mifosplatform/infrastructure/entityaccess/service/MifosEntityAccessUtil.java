@@ -7,6 +7,7 @@ package org.mifosplatform.infrastructure.entityaccess.service;
 
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.Set;
 
 import org.mifosplatform.infrastructure.configuration.domain.GlobalConfigurationProperty;
 import org.mifosplatform.infrastructure.configuration.domain.GlobalConfigurationRepositoryWrapper;
@@ -21,6 +22,7 @@ import org.mifosplatform.infrastructure.entityaccess.domain.MifosEntityAccessTyp
 import org.mifosplatform.infrastructure.entityaccess.domain.MifosEntityType;
 import org.mifosplatform.infrastructure.security.service.PlatformSecurityContext;
 import org.mifosplatform.useradministration.domain.AppUser;
+import org.mifosplatform.useradministration.domain.Role;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -102,6 +104,14 @@ public class MifosEntityAccessUtil {
 	
 	public String getSQLWhereClauseForProductIDsForUserOffice_ifGlobalConfigEnabled (
 			MifosEntityType mifosEntityType) {
+		
+		AppUser currentUser = this.context.authenticatedUser();
+		
+		if (currentUser.hasPermissionForManagingEntityMapping()) {
+        	// User is allowed to manage all mappings. Hence, do not filter the product list
+			return null;
+        }
+		
 		String inClause = "";
 		
 		final GlobalConfigurationProperty property = this.globalConfigurationRepository
@@ -113,15 +123,65 @@ public class MifosEntityAccessUtil {
         	if (mifosEntityType.equals(MifosEntityType.SAVINGS_PRODUCT)) {
         		inClause = mifosEntityAccessReadService.
         				getSQLQueryInClauseIDList_ForSavingsProductsForOffice (
-        				this.context.authenticatedUser().getOffice().getId(), false);
+        				this.context.authenticatedUser().getOffice().getId(), true);
         	} else if (mifosEntityType.equals(MifosEntityType.LOAN_PRODUCT)) {
         		inClause = mifosEntityAccessReadService.
         				getSQLQueryInClauseIDList_ForLoanProductsForOffice (
-        				this.context.authenticatedUser().getOffice().getId(), false);
+        				this.context.authenticatedUser().getOffice().getId(), true);
         	} else if (mifosEntityType.equals(MifosEntityType.CHARGE)) {
         		inClause = mifosEntityAccessReadService.
         				getSQLQueryInClauseIDList_ForChargesForOffice(
-        				this.context.authenticatedUser().getOffice().getId(), false);
+        				this.context.authenticatedUser().getOffice().getId(), true);
+        	}
+        }
+		return inClause;
+	}
+	
+	public String getSQLWhereClauseForProductIDsForCurrentUserRoles_ifGlobalConfigEnabled (
+			MifosEntityType mifosEntityType) {
+		
+		AppUser currentUser = this.context.authenticatedUser();
+		
+		if (currentUser.hasPermissionForManagingEntityMapping()) {
+        	// User is allowed to manage all mappings. Hence, do not filter the product list
+			return null;
+        }
+		
+		String inClause = "";
+		
+		final GlobalConfigurationProperty property = this.globalConfigurationRepository
+        		.findOneByNameWithNotFoundDetection(
+        				MifosEntityAccessConstants.GLOBAL_CONFIG_FOR_ROLE_SPECIFIC_PRODUCTS);
+		
+        if (property.isEnabled() ) {
+        	// Get 'SQL In Clause' for fetching only products/charges that are relevant for current user's office
+        	
+        	StringBuffer roleIdsBuf = new StringBuffer();
+        	boolean firstRole = true;
+        	for (Role role : this.context.authenticatedUser().getRoles() ) {
+        		if (firstRole) {
+        			firstRole = false;
+        		} else {
+        			roleIdsBuf.append(",");
+        		}
+        		roleIdsBuf.append(role.getId());
+        	}
+        	String commaSeparatedRoleIds = roleIdsBuf.toString();
+        	
+        	if (mifosEntityType.equals(MifosEntityType.SAVINGS_PRODUCT)) {
+        		inClause = mifosEntityAccessReadService.
+        				getSQLQueryInClauseIDList_ForSavingsProductsForRoles (
+        						commaSeparatedRoleIds);
+        	} else if (mifosEntityType.equals(MifosEntityType.LOAN_PRODUCT)) {
+        		inClause = mifosEntityAccessReadService.
+        				getSQLQueryInClauseIDList_ForLoanProductsForRoles (
+        						commaSeparatedRoleIds);
+    		/*
+        	} else if (mifosEntityType.equals(MifosEntityType.CHARGE)) {
+        		inClause = mifosEntityAccessReadService.
+        				getSQLQueryInClauseIDList_ForChargesForOffice(
+        				this.context.authenticatedUser().getOffice().getId(), true);
+			*/
         	}
         }
 		return inClause;
