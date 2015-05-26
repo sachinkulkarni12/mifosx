@@ -11,13 +11,11 @@ import org.mifosplatform.infrastructure.entityaccess.domain.MifosEntityType;
 
 public class MifosEntityAccessConfigurationException extends AbstractPlatformDomainRuleException {
 
-    public MifosEntityAccessConfigurationException(final Long firstEntityId,
-    		final MifosEntityType entityType1,
-    		final MifosEntityAccessType accessType,
-    		final MifosEntityType entityType2) {
+    public MifosEntityAccessConfigurationException(final String firstEntityIds,
+    		MifosEntityAccessType relationshipType) {
         super("error.msg.entityaccess.config",
-                "Error while getting entity access configuration for " + entityType1.getType() + ":" + firstEntityId + 
-                " with type " + accessType.toStr() + " against " + entityType2.getType());
+                "Error while getting entity access configuration for: "  + firstEntityIds + 
+                " with relationship type: " + relationshipType.id() + "/" + relationshipType.toStr());
     }
 
 }

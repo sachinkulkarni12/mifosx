@@ -434,6 +434,18 @@ public class AppUser extends AbstractPersistable<Long> implements PlatformUser {
         }
         return hasNotPermission;
     }
+    
+    public boolean hasPermissionForManagingEntityMapping() {
+        boolean hasPermission = false;
+        
+        final String entityMappingPermissionCode = "CREATE_ENTITYMAPPING";
+        final boolean checkPermission = hasPermissionTo(entityMappingPermissionCode);
+        
+        if (checkPermission) {
+            hasPermission = true;
+        }
+        return hasPermission;
+    }
 
     public void validateHasReadPermission(final String resourceType) {
 
