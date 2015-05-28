@@ -1,6 +1,5 @@
 package org.mifosplatform.portfolio.village.domain;
 
-import java.util.Collection;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;

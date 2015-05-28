@@ -28,15 +28,19 @@ public class VillageTypeApiConstants {
     public static final String activationDateParamName = "activatedOnDate";
     public static final String activeParamName = "active";
     public static final String centerIdParamName = "centerId";
+    public static final String centersOfVillageParamName = "setOfCenters";
     
     public static final String timelineParamName = "timeline";
        
     public static final Set<String> VILLAGE_RESPONSE_DATA_PARAMETERS = new HashSet<>(Arrays.asList(idParamName, externalIdParamName, officeIdParamName, 
             officeNameParamName, villageCodeParamName, villageNameParamName, statusParamName, countParamName, talukParamName, districtParamName, 
             pincodeParamName, stateParamName, localeParamName,dateFormatParamName, submittedOnDateParamName, activationDateParamName, 
-             officeOptionsParamName));
+             officeOptionsParamName, centersOfVillageParamName, centersOfVillageParamName));
 
-    public static final Set<String> VILLAGE_CREATE_REQUEST_DATA_PARAMETERS = new HashSet<>(Arrays.asList(externalIdParamName, officeIdParamName, 
+    public static final Set<String> VILLAGE_REQUEST_DATA_PARAMETERS = new HashSet<>(Arrays.asList(externalIdParamName, officeIdParamName, 
             villageCodeParamName, villageNameParamName, countParamName, talukParamName, districtParamName, pincodeParamName, stateParamName,
             activeParamName, localeParamName,dateFormatParamName, activationDateParamName , submittedOnDateParamName, timelineParamName));
+    
+    public static final Set<String> ACTIVATION_REQUEST_DATA_PARAMETERS = new HashSet<>(Arrays.asList(localeParamName,
+            dateFormatParamName, activationDateParamName));
 }

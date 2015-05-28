@@ -29,6 +29,7 @@ import org.mifosplatform.portfolio.search.data.AdHocQuerySearchConditions;
 import org.mifosplatform.portfolio.search.data.AdHocSearchQueryData;
 import org.mifosplatform.portfolio.search.data.SearchConditions;
 import org.mifosplatform.portfolio.search.data.SearchData;
+import org.mifosplatform.portfolio.village.domain.VillageTypeEnumerations;
 import org.mifosplatform.useradministration.domain.AppUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.RowMapper;
@@ -120,6 +121,14 @@ public class SearchReadPlatformServiceImpl implements SearchReadPlatformService 
             final String groupMatchSql = " (select IF(g.level_id=1,'CENTER','GROUP') as entityType, g.id as entityId, g.display_name as entityName, g.external_id as entityExternalId, NULL as entityAccountNo "
                     + " , g.office_id as parentId, o.name as parentName, g.status_enum as entityStatusEnum "
                     + " from m_group g join m_office o on o.id = g.office_id where o.hierarchy like :hierarchy and (g.display_name like :partialSearch and g.display_name not like :search) or (g.external_id like :partialSearch and g.external_id not like :search)) ";
+            
+            final String villageExactMatchSql = " (select 'VILLAGE' as entityType, v.id as entityId, v.village_name as entityName, v.external_id as entityExternalId, NULL as entityAccountNo "
+                    + ", v.office_id as parentId, o.name as parentName, v.status as entityStatusEnum "
+                    + " from chai_villages v join m_office o on o.id = v.office_id where o.hierarchy like :hierarchy and (v.village_name like :search or v.external_id like :search))";
+            
+            final String villageMatchSql = " (select 'VILLAGE' as entityType, v.id as entityId, v.village_name as entityName, v.external_id as entityExternalId, NULL as entityAccountNo "
+                    + ", v.office_id as parentId, o.name as parentName, v.status as entityStatusEnum "
+                    + " from chai_villages v join m_office o on o.id = v.office_id where o.hierarchy like :hierarchy and (v.village_name like :partialSearch or v.external_id like :partialSearch))";
 
             final StringBuffer sql = new StringBuffer();
 
@@ -143,6 +152,10 @@ public class SearchReadPlatformServiceImpl implements SearchReadPlatformService 
             if (searchConditions.isGroupSearch()) {
                 sql.append(groupExactMatchSql).append(union);
             }
+            
+            if (searchConditions.isVillageSearch()) {
+                sql.append(villageExactMatchSql).append(union);
+            }
 
             // include all matching records
             if (searchConditions.isClientSearch()) {
@@ -163,6 +176,10 @@ public class SearchReadPlatformServiceImpl implements SearchReadPlatformService 
 
             if (searchConditions.isGroupSearch()) {
                 sql.append(groupMatchSql).append(union);
+            }
+            
+            if (searchConditions.isVillageSearch()) {
+                sql.append(villageMatchSql).append(union);
             }
 
             sql.replace(sql.lastIndexOf(union), sql.length(), "");
@@ -190,6 +207,10 @@ public class SearchReadPlatformServiceImpl implements SearchReadPlatformService 
 
             else if (entityType.equalsIgnoreCase("group") || entityType.equalsIgnoreCase("center")) {
                 entityStatus = GroupingTypeEnumerations.status(entityStatusEnum);
+            }
+            
+            else if (entityType.equalsIgnoreCase("village")) {
+                entityStatus = VillageTypeEnumerations.status(entityStatusEnum);
             }
 
             else if (entityType.equalsIgnoreCase("loan")) {

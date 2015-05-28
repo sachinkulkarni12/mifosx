@@ -393,6 +393,10 @@ public class CommandWrapper {
     public boolean isClientNoteResource() {
         return this.entityName.equals("CLIENTNOTE");
     }
+    
+    public boolean isVillageActivation() {
+        return this.actionName.equalsIgnoreCase("ACTIVATE") && this.entityName.equalsIgnoreCase("VILLAGE");
+    }
 
     public boolean isLoanResource() {
         return this.entityName.equalsIgnoreCase("LOAN");

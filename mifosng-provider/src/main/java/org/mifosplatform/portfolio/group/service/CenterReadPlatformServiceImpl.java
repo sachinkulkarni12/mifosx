@@ -76,6 +76,7 @@ public class CenterReadPlatformServiceImpl implements CenterReadPlatformService 
     // data mappers
     private final CenterDataMapper centerMapper = new CenterDataMapper();
     private final GroupDataMapper groupDataMapper = new GroupDataMapper();
+    private final CentersAssociatedMapper centers = new CentersAssociatedMapper();
 
     private final PaginationHelper<CenterData> paginationHelper = new PaginationHelper<>();
     private final PaginationParametersDataValidator paginationParametersDataValidator;
@@ -520,6 +521,97 @@ public class CenterReadPlatformServiceImpl implements CenterReadPlatformService 
     public Collection<GroupGeneralData> retrieveAssociatedGroups(final Long centerId) {
         final String sql = "select " + this.groupDataMapper.schema() + " where g.parent_id = ? ";
         return this.jdbcTemplate.query(sql, this.groupDataMapper, new Object[] { centerId });
+    }
+    
+    @Override
+    public Collection<CenterData> retrieveAssociatedCenters(final Long villageId) {
+        final String sql = "select " + this.centers.schema() + " where vc.village_id = ? ";
+        
+        return this.jdbcTemplate.query(sql, this.centers, new Object[] { villageId });
+    }
+    
+    private static final class CentersAssociatedMapper implements RowMapper<CenterData> {
+
+        private final String schema;
+        
+        public CentersAssociatedMapper() {
+            
+            final StringBuilder builder = new StringBuilder(400);
+            
+            builder.append("g.id as id, g.external_id as externalId, g.display_name as name,  ");
+            builder.append("g.office_id as officeId, o.name as officeName, "); //
+            builder.append("g.staff_id as staffId, s.display_name as staffName, "); //
+            builder.append("g.status_enum as statusEnum, "); //
+            builder.append("g.hierarchy as hierarchy, "); //
+            
+            builder.append("g.closedon_date as closedOnDate, ");
+            builder.append("clu.username as closedByUsername, ");
+            builder.append("clu.firstname as closedByFirstname, ");
+            builder.append("clu.lastname as closedByLastname, ");
+            
+            builder.append("g.submittedon_date as submittedOnDate, ");
+            builder.append("sbu.username as submittedByUsername, ");
+            builder.append("sbu.firstname as submittedByFirstname, ");
+            builder.append("sbu.lastname as submittedByLastname, ");
+            
+            builder.append("g.activation_date as activationDate, ");
+            builder.append("acu.username as activatedByUsername, ");
+            builder.append("acu.firstname as activatedByFirstname, ");
+            builder.append("acu.lastname as activatedByLastname ");
+            
+            builder.append("from m_group g "); //
+            builder.append("join m_office o on o.id = g.office_id "); 
+            builder.append("left join m_staff s on s.id = g.staff_id ");
+            builder.append("left join chai_village_center vc on vc.center_id = g.id ");
+            builder.append("left join m_appuser sbu on sbu.id = g.submittedon_userid ");
+            builder.append("left join m_appuser acu on acu.id = g.activatedon_userid ");
+            builder.append("left join m_appuser clu on clu.id = g.closedon_userid ");
+            
+            this.schema = builder.toString();
+        }
+        
+        public String schema() {
+            return this.schema;
+        }
+        
+        @Override
+        public CenterData mapRow(final ResultSet rs, @SuppressWarnings("unused") int rowNum) throws SQLException {
+
+            final Long id = rs.getLong("id");
+            final String name = rs.getString("name");
+            final String externalId = rs.getString("externalId");
+
+            final Integer statusEnum = JdbcSupport.getInteger(rs, "statusEnum");
+            final EnumOptionData status = ClientEnumerations.status(statusEnum);
+            final LocalDate activationDate = JdbcSupport.getLocalDate(rs, "activationDate");
+
+            final Long officeId = rs.getLong("officeId");
+            final String officeName = rs.getString("officeName");
+            final Long staffId = JdbcSupport.getLong(rs, "staffId");
+            final String staffName = rs.getString("staffName");
+            final String hierarchy = rs.getString("hierarchy");
+
+            final LocalDate closedOnDate = JdbcSupport.getLocalDate(rs, "closedOnDate");
+            final String closedByUsername = rs.getString("closedByUsername");
+            final String closedByFirstname = rs.getString("closedByFirstname");
+            final String closedByLastname = rs.getString("closedByLastname");
+
+            final LocalDate submittedOnDate = JdbcSupport.getLocalDate(rs, "submittedOnDate");
+            final String submittedByUsername = rs.getString("submittedByUsername");
+            final String submittedByFirstname = rs.getString("submittedByFirstname");
+            final String submittedByLastname = rs.getString("submittedByLastname");
+
+            final String activatedByUsername = rs.getString("activatedByUsername");
+            final String activatedByFirstname = rs.getString("activatedByFirstname");
+            final String activatedByLastname = rs.getString("activatedByLastname");
+
+            final GroupTimelineData timeline = new GroupTimelineData(submittedOnDate, submittedByUsername, submittedByFirstname,
+                    submittedByLastname, activationDate, activatedByUsername, activatedByFirstname, activatedByLastname, closedOnDate,
+                    closedByUsername, closedByFirstname, closedByLastname);
+
+            return CenterData.instance(id, name, externalId, status, activationDate, officeId, officeName, staffId, staffName, hierarchy, timeline, null);
+        }
+        
     }
 
     @Override

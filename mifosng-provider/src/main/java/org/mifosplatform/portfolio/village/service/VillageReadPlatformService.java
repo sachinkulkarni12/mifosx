@@ -14,5 +14,6 @@ public interface VillageReadPlatformService {
     Collection<VillageData> retrieveAll(SearchParameters searchParameters, PaginationParameters paginationParameters);
     Page<VillageData> retrievePagedAll(SearchParameters searchParameters, PaginationParameters paginationParameters);
     Collection<VillageData> retrieveVillagesForLookup(Long officeId);
+    VillageData retrieveOne(final Long villageId);
     VillageData getCountValue(final Long villageId);
 }
