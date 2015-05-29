@@ -154,7 +154,7 @@ public class MifosEntityAccessReadServiceImpl implements MifosEntityAccessReadSe
                 
                 if (includeAllSubOffices && (firstEntityType.getTable().equals("m_office")) ) {
                 	str.append(" AND ( (eem.from_id IN ( ? ) ");
-	                str.append (" OR ( firstentity.hierarchy like ? ) ) order by firstEntity.hierarchy ");
+	                str.append (" OR ( firstentity.hierarchy like ? ))) order by firstEntity.hierarchy ");
 	                
                 } else {
                 	str.append(" AND eem.from_id IN ( ? ) ");
