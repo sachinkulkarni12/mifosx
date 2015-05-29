@@ -171,11 +171,10 @@ public class GroupingTypesWritePlatformServiceJpaRepositoryImpl implements Group
 
             final Group newGroup = Group.newGroup(groupOffice, staff, parentGroup, groupLevel, name, externalId, active, activationDate,
                     clientMembers, groupMembers, submittedOnDate, currentUser);
-            if(village != null){
-            	newGroup.setVillage(village);
-            }
-            
 
+            if (village != null) {
+                newGroup.setVillage(village);
+            }
             boolean rollbackTransaction = false;
             if (newGroup.isActive()) {
                 // validate Group creation rules for Group
@@ -674,12 +673,12 @@ public class GroupingTypesWritePlatformServiceJpaRepositoryImpl implements Group
     
     private Village retrieveVillage(final JsonCommand command) {
         final Long villageId = command.longValueOfParameterNamed(GroupingTypesApiConstants.villageIdParamName);
+
+        
         Village village = null;
         if(villageId != null){
-        	 village = this.villageRepository.findOneWithNotFoundDetection(villageId);
+            village = this.villageRepository.findOneWithNotFoundDetection(villageId);
         }
-       
-        
         return village;
     }
 

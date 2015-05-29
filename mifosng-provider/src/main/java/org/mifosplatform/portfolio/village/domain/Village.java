@@ -2,18 +2,28 @@ package org.mifosplatform.portfolio.village.domain;
 
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.JoinColumn;
+import javax.persistence.JoinTable;
 import javax.persistence.ManyToOne;
+import javax.persistence.OneToMany;
 import javax.persistence.Table;
 import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
 
 import org.apache.commons.lang.ObjectUtils;
+import org.apache.commons.lang.StringUtils;
+import org.hibernate.annotations.LazyCollection;
+import org.hibernate.annotations.LazyCollectionOption;
 import org.joda.time.LocalDate;
+import org.mifosplatform.infrastructure.core.api.JsonCommand;
 import org.mifosplatform.infrastructure.core.data.ApiParameterError;
 import org.mifosplatform.infrastructure.core.exception.PlatformApiDataValidationException;
 import org.mifosplatform.infrastructure.core.service.DateUtils;
@@ -27,15 +37,33 @@ import org.springframework.data.jpa.domain.AbstractPersistable;
 @Table(name = "chai_villages")
 public class Village extends AbstractPersistable<Long> {
 
+    @Column(name = "external_id")
+    private String externalId;
+    
     @ManyToOne
     @JoinColumn(name= "office_id")
     private Office officeId;
+    
+    @Column(name = "village_code")
+    private String villageCode;
     
     @Column(name="village_name")
     private String villageName;
     
     @Column(name="counter")
     private Long count;
+    
+    @Column(name = "taluk")
+    private String taluk;
+    
+    @Column(name = "district")
+    private String district;
+    
+    @Column(name = "pincode")
+    private Long pinCode;
+    
+    @Column(name = "state")
+    private String state;
     
     @Column(name="activatedon_date", nullable = true)
     @Temporal(TemporalType.DATE)
@@ -56,18 +84,25 @@ public class Village extends AbstractPersistable<Long> {
     @Column(name="status")
     private Integer status;
     
-    /*
+    
     @LazyCollection(LazyCollectionOption.FALSE)
-    @ManyToMany
+    @OneToMany
     @JoinTable(name="chai_village_center", joinColumns= @JoinColumn(name="village_id"), inverseJoinColumns = @JoinColumn(name="center_id"))
-    private final Set<Group> centerMembers = new HashSet<>(); 
-    */
+    private Set<Group> centerMembers; 
+    
     
     public Village() {
     }
 
     public static Village newVillage(final Office office, final String villageName, final Long count, final AppUser currentUser,
-            final boolean active, final LocalDate activationDate, final LocalDate submittedOnDate, final Group centerOfVillage){
+            final boolean active, final LocalDate activationDate, final LocalDate submittedOnDate, final JsonCommand command){
+        
+        final String externalId = command.stringValueOfParameterNamed(VillageTypeApiConstants.externalIdParamName);
+        final String villageCode = command.stringValueOfParameterNamed(VillageTypeApiConstants.villageCodeParamName);
+        final String taluk = command.stringValueOfParameterNamed(VillageTypeApiConstants.talukParamName);
+        final String district = command.stringValueOfParameterNamed(VillageTypeApiConstants.districtParamName);
+        final String state = command.stringValueOfParameterNamed(VillageTypeApiConstants.stateParamName);
+        final Long pincode = command.longValueOfParameterNamed(VillageTypeApiConstants.pincodeParamName);
         
         VillageTypeStatus status = VillageTypeStatus.PENDING;
         LocalDate villageActivaionDate = null;
@@ -76,26 +111,40 @@ public class Village extends AbstractPersistable<Long> {
             villageActivaionDate = activationDate;
         }
         
-        return new Village(office, villageName, count, currentUser, status, activationDate, submittedOnDate, centerOfVillage);
+        return new Village(externalId, office, villageCode, villageName, count, taluk, district, pincode, state, currentUser, status, villageActivaionDate, submittedOnDate);
     }
     
-    private Village(final Office office, final String villageName, final Long count, final AppUser currentUser, final VillageTypeStatus status,
-            final LocalDate activationDate, final LocalDate submittedOnDate, final Group centerOfVillage){
+    private Village(final String externalId, final Office office,final String villageCode, final String villageName, final Long count, final String taluk,
+            final String district, final Long pincode, final String state, final AppUser currentUser, final VillageTypeStatus status,
+            final LocalDate activationDate, final LocalDate submittedOnDate){
        
         final List<ApiParameterError> dataValidationErorrs = new ArrayList<>();
+
+        if (StringUtils.isNotBlank(externalId)) {
+            this.externalId = externalId;
+        }else {
+            this.externalId = null;
+        }
         this.officeId = office;
+        this.villageCode = villageCode;
         this.villageName = villageName;
         this.count = count;
+        this.taluk = taluk;
+        this.district = district;
+        this.pinCode = pincode;
+        this.state = state;
         this.activedBy = currentUser;
         this.submittedOnDate = submittedOnDate.toDate();
+        this.submitedBy = currentUser;
         
-        if (centerOfVillage != null) {
-            // this.centerMembers.add(centerOfVillage);
-        }
-       
         setStatus(activationDate, currentUser, status, dataValidationErorrs);
         
         throwExceptionIfErrors(dataValidationErorrs);
+    }
+    
+    public void setCenter(final Group centerDetails){
+        this.centerMembers = new HashSet<>();
+        this.centerMembers.add(centerDetails);
     }
     
     private void setStatus(final LocalDate activationDate, final AppUser loginUser, final VillageTypeStatus status, List<ApiParameterError> dataValidationErrors){
@@ -209,8 +258,85 @@ public class Village extends AbstractPersistable<Long> {
         }
     }
     
+    
+    public Map<String, Object> update(final JsonCommand command) {
+        final Map<String, Object> actualChanges = new LinkedHashMap<>(9);
+
+        if (command.isChangeInIntegerParameterNamed(VillageTypeApiConstants.statusParamName, this.status)) {
+            final Integer newValue = command.integerValueOfParameterNamed(VillageTypeApiConstants.statusParamName);
+            actualChanges.put(VillageTypeApiConstants.statusParamName, VillageTypeEnumerations.status(newValue));
+            this.status = VillageTypeStatus.fromInt(newValue).getValue();
+        }
+
+        if (command.isChangeInStringParameterNamed(VillageTypeApiConstants.externalIdParamName, this.externalId)) {
+            final String newValue = command.stringValueOfParameterNamed(VillageTypeApiConstants.externalIdParamName);
+            actualChanges.put(VillageTypeApiConstants.externalIdParamName, newValue);
+            this.externalId = StringUtils.defaultIfEmpty(newValue, null);
+        }
+
+        if (command.isChangeInLongParameterNamed(VillageTypeApiConstants.officeIdParamName, this.officeId.getId())) {
+            final Long newValue = command.longValueOfParameterNamed(VillageTypeApiConstants.officeIdParamName);
+            actualChanges.put(VillageTypeApiConstants.officeIdParamName, newValue);
+        }
+
+        if (command.isChangeInStringParameterNamed(VillageTypeApiConstants.villageNameParamName, this.villageName)) {
+            final String newValue = command.stringValueOfParameterNamed(VillageTypeApiConstants.villageNameParamName);
+            actualChanges.put(VillageTypeApiConstants.villageNameParamName, newValue);
+            this.villageName = StringUtils.defaultIfEmpty(newValue, null);
+        }
+        
+        if (command.isChangeInStringParameterNamed(VillageTypeApiConstants.villageCodeParamName, this.villageCode)) {
+            final String newValue = command.stringValueOfParameterNamed(VillageTypeApiConstants.villageCodeParamName);
+            actualChanges.put(VillageTypeApiConstants.villageCodeParamName, newValue);
+            this.villageCode = StringUtils.defaultIfEmpty(newValue, null);
+        }
+        
+        if (command.isChangeInStringParameterNamed(VillageTypeApiConstants.talukParamName, this.taluk)) {
+            final String newValue = command.stringValueOfParameterNamed(VillageTypeApiConstants.talukParamName);
+            actualChanges.put(VillageTypeApiConstants.talukParamName, newValue);
+            this.taluk = StringUtils.defaultIfEmpty(newValue, null);
+        }
+        
+        if (command.isChangeInStringParameterNamed(VillageTypeApiConstants.districtParamName, this.district)) {
+            final String newValue = command.stringValueOfParameterNamed(VillageTypeApiConstants.districtParamName);
+            actualChanges.put(VillageTypeApiConstants.districtParamName, newValue);
+            this.district = StringUtils.defaultIfEmpty(newValue, null);
+        }
+        
+        if (command.isChangeInLongParameterNamed(VillageTypeApiConstants.pincodeParamName, this.pinCode)) {
+            final String newValue = command.stringValueOfParameterNamed(VillageTypeApiConstants.pincodeParamName);
+            actualChanges.put(VillageTypeApiConstants.pincodeParamName, newValue);
+            this.pinCode = Long.parseLong(newValue);
+        }
+        
+        if (command.isChangeInStringParameterNamed(VillageTypeApiConstants.stateParamName, this.state)) {
+            final String newValue = command.stringValueOfParameterNamed(VillageTypeApiConstants.stateParamName);
+            actualChanges.put(VillageTypeApiConstants.stateParamName, newValue);
+            this.state = StringUtils.defaultIfEmpty(newValue, null);
+        }
+
+        final String dateFormatAsInput = command.dateFormat();
+        final String localeAsInput = command.locale();
+
+        if (command.isChangeInLocalDateParameterNamed(VillageTypeApiConstants.activationDateParamName, getActivationLocalDate())) {
+            final String valueAsInput = command.stringValueOfParameterNamed(VillageTypeApiConstants.activationDateParamName);
+            actualChanges.put(VillageTypeApiConstants.activationDateParamName, valueAsInput);
+            actualChanges.put(VillageTypeApiConstants.dateFormatParamName, dateFormatAsInput);
+            actualChanges.put(VillageTypeApiConstants.localeParamName, localeAsInput);
+
+            final LocalDate newValue = command.localDateValueOfParameterNamed(VillageTypeApiConstants.activationDateParamName);
+            this.activationDate = newValue.toDate();
+        }
+
+        return actualChanges;
+    }
+    
     public Long officeId() {
        return this.officeId.getId();
+    }
+    
+    public Office getOffice() {
+        return this.officeId;
     }
     
     public boolean isOfficeIdentifiedBy(final Long officeId) {
@@ -221,4 +347,11 @@ public class Village extends AbstractPersistable<Long> {
         this.count += 1;
     }
 
+    public boolean isNotPending() {
+        return !isPending();
+    }
+    
+    public boolean isPending() {
+        return VillageTypeStatus.fromInt(this.status).isPending();
+    }
 }

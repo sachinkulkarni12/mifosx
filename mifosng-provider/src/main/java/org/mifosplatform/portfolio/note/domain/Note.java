@@ -35,7 +35,7 @@ public class Note extends AbstractAuditableCustom<AppUser, Long> {
     @ManyToOne
     @JoinColumn(name = "group_id", nullable = true)
     private Group group;
-
+  
     @ManyToOne
     @JoinColumn(name = "loan_id", nullable = true)
     private Loan loan;
@@ -63,7 +63,7 @@ public class Note extends AbstractAuditableCustom<AppUser, Long> {
         final String note = command.stringValueOfParameterNamed("note");
         return new Note(group, note);
     }
-
+    
     public static Note loanNote(final Loan loan, final String note) {
         return new Note(loan, note);
     }
@@ -88,7 +88,7 @@ public class Note extends AbstractAuditableCustom<AppUser, Long> {
         this.client = null;
         this.noteTypeId = NoteType.GROUP.getValue();
     }
-
+    
     private Note(final Loan loan, final String note) {
         this.loan = loan;
         this.client = loan.client();

@@ -393,6 +393,10 @@ public class CommandWrapper {
     public boolean isClientNoteResource() {
         return this.entityName.equals("CLIENTNOTE");
     }
+    
+    public boolean isVillageActivation() {
+        return this.actionName.equalsIgnoreCase("ACTIVATE") && this.entityName.equalsIgnoreCase("VILLAGE");
+    }
 
     public boolean isLoanResource() {
         return this.entityName.equalsIgnoreCase("LOAN");
@@ -713,6 +717,10 @@ public class CommandWrapper {
 
     public boolean isCenterResource() {
         return this.entityName.equalsIgnoreCase("CENTER");
+    }
+    
+    public boolean isVillageResource() {
+        return this.entityName.equalsIgnoreCase("VILLAGE");
     }
 
     public boolean isSaveCenterCollectionSheet() {

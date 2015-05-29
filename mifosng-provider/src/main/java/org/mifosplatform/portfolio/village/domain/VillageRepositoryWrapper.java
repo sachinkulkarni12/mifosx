@@ -29,4 +29,8 @@ public class VillageRepositoryWrapper {
     public void save(final Village entity) {
         this.repository.save(entity);
     }
+    
+    public void delete(final Village village) {
+        this.repository.delete(village);
+    }
 }

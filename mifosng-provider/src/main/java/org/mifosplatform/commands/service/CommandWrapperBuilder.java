@@ -1418,6 +1418,22 @@ public class CommandWrapperBuilder {
         return this;
     }
     
+    public CommandWrapperBuilder updateVillage(final Long villageId) {
+        this.actionName = "UPDATE";
+        this.entityName = "VILLAGE";
+        this.entityId = villageId;
+        this.href = "/villages/" + villageId;
+        return this;
+    }
+    
+    public CommandWrapperBuilder deleteVillage(final Long villageId) {
+        this.actionName = "DELETE";
+        this.entityName = "VILLAGE";
+        this.entityId = villageId;
+        this.href = "/villages/" + villageId;
+        return this;
+    }
+    
     public CommandWrapperBuilder associateCentersToVillage(final Long centerId) {
         this.actionName = "ASSOCIATECENTERS";
         this.entityName = "CENTER";

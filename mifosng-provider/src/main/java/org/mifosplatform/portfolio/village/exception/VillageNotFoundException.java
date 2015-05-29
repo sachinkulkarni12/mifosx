@@ -6,6 +6,6 @@ import org.mifosplatform.infrastructure.core.exception.AbstractPlatformResourceN
 public class VillageNotFoundException extends AbstractPlatformResourceNotFoundException{
 
     public VillageNotFoundException(final Long id) {
-        super("error.msg.village.id.invalid", "Village with identifier" + id + "does not exist", id);
+        super("error.msg.village.id.invalid", "Village with identifier " + id + " does not exist", id);
     }
 }

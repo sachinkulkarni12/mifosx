@@ -34,4 +34,6 @@ public interface CenterReadPlatformService {
     CenterData retrieveCenterWithClosureReasons();
 
     Collection<StaffCenterData> retriveAllCentersByMeetingDate(Long officeId, Date meetingDate, Long staffId);
+
+    Collection<CenterData> retrieveAssociatedCenters(Long villageId);
 }

@@ -1,5 +1,7 @@
 package org.mifosplatform.portfolio.village.service;
 
+import java.util.Map;
+
 import org.joda.time.LocalDate;
 import org.mifosplatform.commands.domain.CommandWrapper;
 import org.mifosplatform.commands.service.CommandProcessingService;
@@ -19,6 +21,7 @@ import org.mifosplatform.portfolio.village.api.VillageTypeApiConstants;
 import org.mifosplatform.portfolio.village.domain.Village;
 import org.mifosplatform.portfolio.village.domain.VillageRepositoryWrapper;
 import org.mifosplatform.portfolio.village.exception.InvalidVillageStateTransitionException;
+import org.mifosplatform.portfolio.village.exception.VillageMustBePendingToBeDeletedException;
 import org.mifosplatform.portfolio.village.serialization.VillageDataValidator;
 import org.mifosplatform.useradministration.domain.AppUser;
 import org.slf4j.Logger;
@@ -39,11 +42,9 @@ public class VillageWritePlatformServiceImpl implements VillageWritePlatformServ
     private final OfficeRepository officeRepository;
     private final GroupRepository centerRepository;
     private final CommandProcessingService commandProcessingService;
-    
     @Autowired
     public VillageWritePlatformServiceImpl(PlatformSecurityContext context, VillageDataValidator fromApiJsonDeserializer, VillageRepositoryWrapper villageRepository, 
-            OfficeRepository officeRepository, GroupRepository centerRepository, 
-            CommandProcessingService commandProcessingService) {
+            OfficeRepository officeRepository, GroupRepository centerRepository, CommandProcessingService commandProcessingService) {
 
         this.context = context;
         this.fromApiJsonDeserializer = fromApiJsonDeserializer;
@@ -70,8 +71,11 @@ public class VillageWritePlatformServiceImpl implements VillageWritePlatformServ
             }
             
             final String villageName = command.stringValueOfParameterNamed(VillageTypeApiConstants.villageNameParamName);
-            final Long count = command.longValueOfParameterNamed(VillageTypeApiConstants.countParamName);
             
+            Long count = command.longValueOfParameterNamed(VillageTypeApiConstants.countParamName);
+            if (count == null) {
+                count = 0L;
+            }
             final LocalDate activationDate = command.localDateValueOfParameterNamed(VillageTypeApiConstants.activationDateParamName);
             
             validateOfficeOpeningDateIsAfterVillageOpeningDate(villageOffice, activationDate);
@@ -84,6 +88,8 @@ public class VillageWritePlatformServiceImpl implements VillageWritePlatformServ
                 if (centerOfVillage == null) { throw new CenterNotFoundException(centerId); }
             }
             
+         //   final Set<Group> centers = assembleSetOfCenters(officeId, command);
+            
             final boolean active = command.booleanPrimitiveValueOfParameterNamed(VillageTypeApiConstants.activeParamName);
             LocalDate submittedOnDate = new LocalDate();
             if (active && submittedOnDate.isAfter(activationDate)) {
@@ -94,7 +100,11 @@ public class VillageWritePlatformServiceImpl implements VillageWritePlatformServ
                 submittedOnDate = command.localDateValueOfParameterNamed(VillageTypeApiConstants.submittedOnDateParamName);
             }
             
-            final Village newVillage = Village.newVillage(villageOffice, villageName, count, currentUser, active, activationDate, submittedOnDate, centerOfVillage);
+            final Village newVillage = Village.newVillage(villageOffice, villageName, count, currentUser, active, activationDate, submittedOnDate, command);
+            
+            if (centerOfVillage != null) {
+                newVillage.setCenter(centerOfVillage);
+            }
             
             boolean rollbackTransaction = false;
             if (newVillage.isActive()) {
@@ -141,6 +151,90 @@ public class VillageWritePlatformServiceImpl implements VillageWritePlatformServ
             
             throw new InvalidVillageStateTransitionException("activate.date", "cannot.be. before.office.activation.date", errorMessage, activationDate, 
                     villageOffice.getOpeningLocalDate());
+        }
+    }
+    
+    @Transactional
+    @Override
+    public CommandProcessingResult updateVillage(final Long villageId, final JsonCommand command) {
+
+        try {
+            this.fromApiJsonDeserializer.validateForUpdateVillage(command);
+            
+            final Village villageForUpdate = this.villageRepository.findOneWithNotFoundDetection(villageId);
+            final Office officeId = villageForUpdate.getOffice();
+            final String villageHierarchy = villageForUpdate.getOffice().getHierarchy();
+            
+            this.context.validateAccessRights(villageHierarchy);
+            
+            final LocalDate activationDate = command.localDateValueOfParameterNamed(VillageTypeApiConstants.activationDateParamName);
+            validateOfficeOpeningDateIsAfterVillageOpeningDate(officeId, activationDate);
+            
+            final Map<String, Object> changes = villageForUpdate.update(command);
+            
+            if (!changes.isEmpty()) {
+                this.villageRepository.saveAndFlush(villageForUpdate);
+            }
+            
+            return new CommandProcessingResultBuilder() //
+            .withCommandId(command.commandId()) //
+            .withOfficeId(villageForUpdate.officeId()) //
+            .withGroupId(villageForUpdate.getId()) //
+            .withEntityId(villageForUpdate.getId()) //
+            .with(changes) //
+            .build();
+            
+        } catch (final DataIntegrityViolationException e) {
+            handleVillageDataIntegrityIssues(command, e);
+            return CommandProcessingResult.empty();
+        }
+    }
+
+
+    @Transactional
+    @Override
+    public CommandProcessingResult deleteVillage(Long villageId) {
+
+        final Village village = this.villageRepository.findOneWithNotFoundDetection(villageId);
+        if (village.isNotPending()) { throw new VillageMustBePendingToBeDeletedException(villageId);
+        }
+        
+        this.villageRepository.delete(village);
+        
+        return new CommandProcessingResultBuilder() //
+                .withOfficeId(village.officeId()) //
+                .withVillageId(villageId) //
+                .withEntityId(villageId) //
+                .build();
+    }
+    
+    @Transactional
+    @Override
+    public CommandProcessingResult activateVillage(final Long villageId, final JsonCommand command) {
+
+        try {
+            this.fromApiJsonDeserializer.validateForActivation(command, VillageTypeApiConstants.VILLAGE_RESOURCE_NAME);
+
+            final AppUser currentUser = this.context.authenticatedUser();
+
+            final Village village = this.villageRepository.findOneWithNotFoundDetection(villageId);
+
+            final LocalDate activationDate = command.localDateValueOfParameterNamed("activatedOnDate");
+
+            validateOfficeOpeningDateIsAfterVillageOpeningDate(village.getOffice(), activationDate);
+            village.activate(currentUser, activationDate);
+
+            this.villageRepository.saveAndFlush(village);
+
+            return new CommandProcessingResultBuilder() //
+                    .withCommandId(command.commandId()) //
+                    .withOfficeId(village.officeId()) //
+                    .withGroupId(villageId) //
+                    .withEntityId(villageId) //
+                    .build();
+        } catch (final DataIntegrityViolationException dve) {
+            handleVillageDataIntegrityIssues(command, dve);
+            return CommandProcessingResult.empty();
         }
     }
     
