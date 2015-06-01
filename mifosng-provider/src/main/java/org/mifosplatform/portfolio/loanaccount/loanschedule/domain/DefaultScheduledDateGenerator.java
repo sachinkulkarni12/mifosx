@@ -5,6 +5,8 @@
  */
 package org.mifosplatform.portfolio.loanaccount.loanschedule.domain;
 
+import java.util.List;
+
 import org.joda.time.Days;
 import org.joda.time.LocalDate;
 import org.joda.time.Months;
@@ -16,18 +18,21 @@ import org.mifosplatform.organisation.workingdays.service.WorkingDaysUtil;
 import org.mifosplatform.portfolio.common.domain.DayOfWeekType;
 import org.mifosplatform.portfolio.common.domain.PeriodFrequencyType;
 import org.mifosplatform.portfolio.loanaccount.data.HolidayDetailDTO;
+import org.mifosplatform.portfolio.loanaccount.domain.LoanRepaymentScheduleInstallment;
+import org.mifosplatform.portfolio.loanaccount.rescheduleloan.domain.LoanRescheduleRequest;
 
 public class DefaultScheduledDateGenerator implements ScheduledDateGenerator {
 
     @Override
-    public LocalDate getLastRepaymentDate(final LoanApplicationTerms loanApplicationTerms, final HolidayDetailDTO holidayDetailDTO) {
+    public LocalDate getLastRepaymentDate(final LoanApplicationTerms loanApplicationTerms, final HolidayDetailDTO holidayDetailDTO,
+    		List<LoanRescheduleRequest> loanRescheduleRequests) {
 
         final int numberOfRepayments = loanApplicationTerms.getNumberOfRepayments();
 
         LocalDate lastRepaymentDate = loanApplicationTerms.getExpectedDisbursementDate();
         boolean isFirstRepayment = true;
         for (int repaymentPeriod = 1; repaymentPeriod <= numberOfRepayments; repaymentPeriod++) {
-            lastRepaymentDate = generateNextRepaymentDate(lastRepaymentDate, loanApplicationTerms, isFirstRepayment);
+            lastRepaymentDate = generateNextRepaymentDate(lastRepaymentDate, loanApplicationTerms, isFirstRepayment, loanRescheduleRequests);
             isFirstRepayment = false;
         }
         lastRepaymentDate = adjustRepaymentDate(lastRepaymentDate, loanApplicationTerms, holidayDetailDTO);
@@ -36,7 +41,7 @@ public class DefaultScheduledDateGenerator implements ScheduledDateGenerator {
 
     @Override
     public LocalDate generateNextRepaymentDate(final LocalDate lastRepaymentDate, final LoanApplicationTerms loanApplicationTerms,
-            boolean isFirstRepayment) {
+            boolean isFirstRepayment, List<LoanRescheduleRequest> loanRescheduleRequests) {
         final LocalDate firstRepaymentPeriodDate = loanApplicationTerms.getCalculatedRepaymentsStartingFromLocalDate();
         LocalDate dueRepaymentPeriodDate = null;
         if (isFirstRepayment && firstRepaymentPeriodDate != null) {
@@ -46,6 +51,13 @@ public class DefaultScheduledDateGenerator implements ScheduledDateGenerator {
                     loanApplicationTerms.getRepaymentEvery(), lastRepaymentDate, loanApplicationTerms.getNthDay(),
                     loanApplicationTerms.getWeekDayType());
         }
+        if (loanRescheduleRequests != null) { 
+	        for (LoanRescheduleRequest loanRescheduleRequest : loanRescheduleRequests) {
+		        if (dueRepaymentPeriodDate.equals(loanRescheduleRequest.getRescheduleFromDate())) {
+		        	dueRepaymentPeriodDate = loanRescheduleRequest.getAdjustedDueDate();
+		        }
+	        }
+       }
         return dueRepaymentPeriodDate;
     }
 
@@ -191,12 +203,13 @@ public class DefaultScheduledDateGenerator implements ScheduledDateGenerator {
 
     @Override
     public LocalDate generateNextScheduleDateStartingFromDisburseDate(LocalDate lastRepaymentDate,
-            LoanApplicationTerms loanApplicationTerms, final HolidayDetailDTO holidayDetailDTO) {
+            LoanApplicationTerms loanApplicationTerms, final HolidayDetailDTO holidayDetailDTO,
+            List<LoanRescheduleRequest> loanRescheduleRequests) {
 
         LocalDate generatedDate = loanApplicationTerms.getExpectedDisbursementDate();
         boolean isFirstRepayment = true;
         while (!generatedDate.isAfter(lastRepaymentDate)) {
-            generatedDate = generateNextRepaymentDate(generatedDate, loanApplicationTerms, isFirstRepayment);
+            generatedDate = generateNextRepaymentDate(generatedDate, loanApplicationTerms, isFirstRepayment, loanRescheduleRequests);
             isFirstRepayment = false;
         }
         generatedDate = adjustRepaymentDate(generatedDate, loanApplicationTerms, holidayDetailDTO);

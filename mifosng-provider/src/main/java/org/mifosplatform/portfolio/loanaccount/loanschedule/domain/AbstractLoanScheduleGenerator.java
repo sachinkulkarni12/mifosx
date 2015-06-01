@@ -52,21 +52,22 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
 
     @Override
     public LoanScheduleModel generate(final MathContext mc, final LoanApplicationTerms loanApplicationTerms,
-            final Set<LoanCharge> loanCharges, final HolidayDetailDTO holidayDetailDTO) {
+            final Set<LoanCharge> loanCharges, final HolidayDetailDTO holidayDetailDTO, List<LoanRescheduleRequest> loanRescheduleRequests) {
         final Collection<RecalculationDetail> diffAmt = null;
         final LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor = null;
         final LocalDate scheduleTillDate = null;
         return generate(mc, loanApplicationTerms, loanCharges, holidayDetailDTO, diffAmt, loanRepaymentScheduleTransactionProcessor,
-                scheduleTillDate);
+                scheduleTillDate, loanRescheduleRequests);
     }
 
     private LoanScheduleModel generate(final MathContext mc, final LoanApplicationTerms loanApplicationTerms,
             final Set<LoanCharge> loanCharges, final HolidayDetailDTO holidayDetailDTO, final Collection<RecalculationDetail> transactions,
-            final LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor, final LocalDate scheduleTillDate) {
+            final LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor, final LocalDate scheduleTillDate,
+            List<LoanRescheduleRequest> loanRescheduleRequests) {
 
         final ApplicationCurrency applicationCurrency = loanApplicationTerms.getApplicationCurrency();
         // 1. generate list of proposed schedule due dates
-        final LocalDate loanEndDate = this.scheduledDateGenerator.getLastRepaymentDate(loanApplicationTerms, holidayDetailDTO);
+        final LocalDate loanEndDate = this.scheduledDateGenerator.getLastRepaymentDate(loanApplicationTerms, holidayDetailDTO, loanRescheduleRequests);
         loanApplicationTerms.updateLoanEndDate(loanEndDate);
 
         // 2. determine the total charges due at time of disbursement
@@ -101,7 +102,7 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
         LocalDate actualRepaymentDate = periodStartDate;
         boolean isFirstRepayment = true;
         LocalDate firstRepaymentdate = this.scheduledDateGenerator.generateNextRepaymentDate(periodStartDate, loanApplicationTerms,
-                isFirstRepayment);
+                isFirstRepayment, loanRescheduleRequests);
         final LocalDate idealDisbursementDate = this.scheduledDateGenerator.idealDisbursementDateBasedOnFirstRepaymentDate(
                 loanApplicationTerms.getLoanTermPeriodFrequencyType(), loanApplicationTerms.getRepaymentEvery(), firstRepaymentdate);
 
@@ -149,7 +150,7 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
         LocalDate currentDate = DateUtils.getLocalDateOfTenant();
         LocalDate lastRestDate = currentDate;
         if (loanApplicationTerms.getRestCalendarInstance() != null) {
-            lastRestDate = getNextRestScheduleDate(currentDate.minusDays(1), loanApplicationTerms, holidayDetailDTO);
+            lastRestDate = getNextRestScheduleDate(currentDate.minusDays(1), loanApplicationTerms, holidayDetailDTO, loanRescheduleRequests);
         }
         // compounding(interest/Fee) amounts will be added along with
         // date(after applying compounding frequency)
@@ -169,14 +170,14 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
         while (!outstandingBalance.isZero() || !disburseDetailMap.isEmpty()) {
 
             actualRepaymentDate = this.scheduledDateGenerator.generateNextRepaymentDate(actualRepaymentDate, loanApplicationTerms,
-                    isFirstRepayment);
+                    isFirstRepayment, loanRescheduleRequests);
             isFirstRepayment = false;            
             LocalDate scheduledDueDate = this.scheduledDateGenerator.adjustRepaymentDate(actualRepaymentDate, loanApplicationTerms,
                     holidayDetailDTO);
 
             if (!latePaymentMap.isEmpty()) {
                 populateCompoundingDatesInPeriod(periodStartDate, scheduledDueDate, currentDate, loanApplicationTerms, holidayDetailDTO,
-                        compoundingMap, loanCharges, currency);
+                        compoundingMap, loanCharges, currency, loanRescheduleRequests);
                 compoundingDateVariations.put(periodStartDate, new TreeMap<>(compoundingMap));
             }
             
@@ -343,7 +344,7 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
 
                                 if (loanApplicationTerms.getPreClosureInterestCalculationStrategy().calculateTillRestFrequencyEnabled()) {
                                     LocalDate applicableDate = getNextRestScheduleDate(detail.getTransactionDate().minusDays(1),
-                                            loanApplicationTerms, holidayDetailDTO);
+                                            loanApplicationTerms, holidayDetailDTO, loanRescheduleRequests);
                                     checkForOutstanding = detail.getTransactionDate().isEqual(applicableDate);
 
                                 }
@@ -361,7 +362,7 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
                                 // payment amounts and applicable date as per
                                 // rest
                                 updatePrincipalPaidPortionToMap(loanApplicationTerms, holidayDetailDTO, principalPortionMap, installment,
-                                        detail, unprocessed.plus(addToPrinciapal), installments);
+                                        detail, unprocessed.plus(addToPrinciapal), installments, loanRescheduleRequests);
                                 totalRepaymentExpected = totalRepaymentExpected.add(unprocessed.plus(addToPrinciapal).getAmount());
                                 totalCumulativePrincipal = totalCumulativePrincipal.plus(unprocessed.plus(addToPrinciapal));
 
@@ -373,15 +374,15 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
                             // details to
                             // map for interest calculation
                             updateLatePaidAmountsToPrincipalMap(principalPortionMap, detail.getTransaction(), latePaymentMap,
-                                    compoundingMap, loanApplicationTerms, currency, holidayDetailDTO, lastRestDate);
+                                    compoundingMap, loanApplicationTerms, currency, holidayDetailDTO, lastRestDate, loanRescheduleRequests);
                             compoundingDateVariations.put(periodStartDateApplicableForInterest, new TreeMap<>(compoundingMap));
                             if (updateLatePaymentMap) {
                                 updateLatePaymentsToMap(loanApplicationTerms, holidayDetailDTO, currency, latePaymentMap, scheduledDueDate,
-                                        installments, true, lastRestDate, compoundingMap);
+                                        installments, true, lastRestDate, compoundingMap, loanRescheduleRequests);
                             }
                         } else if (loanRepaymentScheduleTransactionProcessor != null) {
                             LocalDate applicableDate = getNextRestScheduleDate(detail.getTransactionDate().minusDays(1),
-                                    loanApplicationTerms, holidayDetailDTO);
+                                    loanApplicationTerms, holidayDetailDTO, loanRescheduleRequests);
                             if (applicableDate.isBefore(scheduledDueDate)) {
                                 List<LoanTransaction> currentTransactions = createCurrentTransactionList(detail);
                                 Money unprocessed = loanRepaymentScheduleTransactionProcessor.handleRepaymentSchedule(currentTransactions,
@@ -451,10 +452,10 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
 
                                 }
                                 LocalDate tillDate = getNextRestScheduleDate(currentDate.minusDays(1), loanApplicationTerms,
-                                        holidayDetailDTO);
+                                        holidayDetailDTO, loanRescheduleRequests);
                                 if (arrears.isGreaterThanZero() && applicableDate.isBefore(tillDate)) {
                                     updateLatePaidAmountsToPrincipalMap(principalPortionMap, detail.getTransaction(), latePaymentMap,
-                                            compoundingMap, loanApplicationTerms, currency, holidayDetailDTO, lastRestDate);
+                                            compoundingMap, loanApplicationTerms, currency, holidayDetailDTO, lastRestDate, loanRescheduleRequests);
                                     compoundingDateVariations.put(periodStartDateApplicableForInterest, new TreeMap<>(compoundingMap));
                                 }
                             }
@@ -585,7 +586,7 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
                                 LocalDate calculateTill = detail.getTransactionDate();
                                 if (loanApplicationTerms.getPreClosureInterestCalculationStrategy().calculateTillRestFrequencyEnabled()) {
                                     calculateTill = getNextRestScheduleDate(calculateTill.minusDays(1), loanApplicationTerms,
-                                            holidayDetailDTO);
+                                            holidayDetailDTO, loanRescheduleRequests);
                                 }
                                 if (compoundingDateVariations.containsKey(periodStartDateApplicableForInterest)) {
                                     compoundingMap.clear();
@@ -625,7 +626,7 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
                             // updates principal portion map with the early
                             // payment amounts and applicable date as per rest
                             updatePrincipalPaidPortionToMap(loanApplicationTerms, holidayDetailDTO, principalPortionMap, installment,
-                                    detail, unprocessed.plus(addToPrinciapal), installments);
+                                    detail, unprocessed.plus(addToPrinciapal), installments, loanRescheduleRequests);
                             totalRepaymentExpected = totalRepaymentExpected.add(unprocessed.plus(addToPrinciapal).getAmount());
                             totalCumulativePrincipal = totalCumulativePrincipal.plus(unprocessed.plus(addToPrinciapal));
 
@@ -637,7 +638,7 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
                     }
                 }
                 updateLatePaymentsToMap(loanApplicationTerms, holidayDetailDTO, currency, latePaymentMap, scheduledDueDate, installments,
-                        true, lastRestDate, compoundingMap);
+                        true, lastRestDate, compoundingMap, loanRescheduleRequests);
                 principalForThisPeriod = principalForThisPeriod.minus(principalProcessed);
             }
 
@@ -648,7 +649,7 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
             LocalDate amountApplicableDate = installment.periodDueDate();
             if (loanApplicationTerms.isInterestRecalculationEnabled()) {
                 amountApplicableDate = getNextRestScheduleDate(installment.periodDueDate().minusDays(1), loanApplicationTerms,
-                        holidayDetailDTO);
+                        holidayDetailDTO, loanRescheduleRequests);
             }
             updateMapWithAmount(principalPortionMap, principalForThisPeriod.minus(reducedBalance), amountApplicableDate);
 
@@ -710,7 +711,8 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
                 && currentDate.isAfter(periodStartDate)) {
             Money totalInterest = addInterestOnlyRepaymentScheduleForCurrentdate(mc, loanApplicationTerms, holidayDetailDTO, currency,
                     periods, periodStartDate, actualRepaymentDate, instalmentNumber, latePaymentMap, currentDate,
-                    loanRepaymentScheduleTransactionProcessor, principalPortionMap, compoundingMap, transactions, installments, loanCharges);
+                    loanRepaymentScheduleTransactionProcessor, principalPortionMap, compoundingMap, transactions, installments, loanCharges,
+                    loanRescheduleRequests);
             totalCumulativeInterest = totalCumulativeInterest.plus(totalInterest);
         }
 
@@ -758,7 +760,7 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
             final LocalDate currentDate, LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor,
             final Map<LocalDate, Money> principalPortionMap, TreeMap<LocalDate, Money> compoundingMap,
             final Collection<RecalculationDetail> transactions, final List<LoanRepaymentScheduleInstallment> installments,
-            Set<LoanCharge> loanCharges) {
+            Set<LoanCharge> loanCharges, List<LoanRescheduleRequest> loanRescheduleRequests) {
         boolean isFirstRepayment = false;
         LocalDate startDate = periodStartDate;
         Money outstanding = Money.zero(currency);
@@ -767,11 +769,11 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
         Map<LocalDate, Money> disburseDetailsMap = new HashMap<>();
         double interestCalculationGraceOnRepaymentPeriodFraction = Double.valueOf(0);
         int periodNumberTemp = 1;
-        LocalDate lastRestDate = getNextRestScheduleDate(currentDate.minusDays(1), loanApplicationTerms, holidayDetailDTO);
+        LocalDate lastRestDate = getNextRestScheduleDate(currentDate.minusDays(1), loanApplicationTerms, holidayDetailDTO, loanRescheduleRequests);
         do {
 
             actualRepaymentDate = this.scheduledDateGenerator.generateNextRepaymentDate(actualRepaymentDate, loanApplicationTerms,
-                    isFirstRepayment);
+                    isFirstRepayment, loanRescheduleRequests);
             int daysInPeriod = Days.daysBetween(periodStartDate, actualRepaymentDate).getDays();
             if (actualRepaymentDate.isAfter(currentDate)) {
                 actualRepaymentDate = currentDate;
@@ -783,7 +785,7 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
 
             if (!latePaymentMap.isEmpty()) {
                 populateCompoundingDatesInPeriod(periodStartDate, actualRepaymentDate, currentDate, loanApplicationTerms, holidayDetailDTO,
-                        compoundingMap, loanCharges, currency);
+                        compoundingMap, loanCharges, currency, loanRescheduleRequests);
             }
 
             for (RecalculationDetail detail : applicableTransactions) {
@@ -815,7 +817,7 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
                 }
                 loanRepaymentScheduleTransactionProcessor.handleRepaymentSchedule(currentTransactions, currency, installments);
                 updateLatePaymentsToMap(loanApplicationTerms, holidayDetailDTO, currency, latePaymentMap, currentDate, installments, false,
-                        lastRestDate, compoundingMap);
+                        lastRestDate, compoundingMap, loanRescheduleRequests);
                 outstanding = outstanding.zero();
                 outstanding = updateOutstandingFromLatePayment(periodStartDate, latePaymentMap, outstanding);
                 outstanding = updateBalanceForInterestCalculation(principalPortionMap, periodStartDate, outstanding, false);
@@ -835,7 +837,7 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
                 totalInterest = totalInterest.plus(interest);
                 if (loanApplicationTerms.getInterestRecalculationCompoundingMethod().isInterestCompoundingEnabled()) {
                     LocalDate compoundingEffectiveDate = getNextCompoundScheduleDate(actualRepaymentDate.minusDays(1),
-                            loanApplicationTerms, holidayDetailDTO);
+                            loanApplicationTerms, holidayDetailDTO, loanRescheduleRequests);
                     latePaymentMap.put(compoundingEffectiveDate, interest);
 
                 }
@@ -950,9 +952,9 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
     private void updateLatePaidAmountsToPrincipalMap(final Map<LocalDate, Money> principalVariationMap,
             final LoanTransaction loanTransaction, final Map<LocalDate, Money> latePaymentsMap, final Map<LocalDate, Money> compoundingMap,
             final LoanApplicationTerms applicationTerms, final MonetaryCurrency currency, final HolidayDetailDTO holidayDetailDTO,
-            final LocalDate lastRestDate) {
+            final LocalDate lastRestDate, List<LoanRescheduleRequest> loanRescheduleRequests) {
         LocalDate applicableDate = getNextRestScheduleDate(loanTransaction.getTransactionDate().minusDays(1), applicationTerms,
-                holidayDetailDTO);
+                holidayDetailDTO, loanRescheduleRequests);
 
         Money principalPortion = loanTransaction.getPrincipalPortion(currency);
         Money compoundedLatePayments = Money.zero(currency);
@@ -1012,7 +1014,7 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
     private void updateLatePaymentsToMap(final LoanApplicationTerms loanApplicationTerms, final HolidayDetailDTO holidayDetailDTO,
             final MonetaryCurrency currency, final Map<LocalDate, Money> latePaymentMap, final LocalDate scheduledDueDate,
             List<LoanRepaymentScheduleInstallment> installments, boolean applyRestFrequencyForPrincipal, final LocalDate lastRestDate,
-            final TreeMap<LocalDate, Money> compoundingMap) {
+            final TreeMap<LocalDate, Money> compoundingMap, List<LoanRescheduleRequest> loanRescheduleRequests) {
         latePaymentMap.clear();
         LocalDate currentDate = DateUtils.getLocalDateOfTenant();
 
@@ -1029,7 +1031,7 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
                 LocalDate principalEffectiveDate = loanRepaymentScheduleInstallment.getDueDate();
                 if (applyRestFrequencyForPrincipal) {
                     principalEffectiveDate = getNextRestScheduleDate(loanRepaymentScheduleInstallment.getDueDate().minusDays(1),
-                            loanApplicationTerms, holidayDetailDTO);
+                            loanApplicationTerms, holidayDetailDTO, loanRescheduleRequests);
                 }
                 if (principalEffectiveDate.isBefore(currentDate)) {
                     updateMapWithAmount(latePaymentMap, loanRepaymentScheduleInstallment.getPrincipalOutstanding(currency),
@@ -1039,7 +1041,7 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
                 }
 
                 final Money changedCompoundedMoney = updateMapWithCompoundingDetails(loanApplicationTerms, holidayDetailDTO, currency,
-                        compoundingMap, loanRepaymentScheduleInstallment, lastRestDate, compoundedMoney, scheduledDueDate);
+                        compoundingMap, loanRepaymentScheduleInstallment, lastRestDate, compoundedMoney, scheduledDueDate, loanRescheduleRequests);
                 if (compoundedMoney.isZero() || !compoundedMoney.isEqualTo(changedCompoundedMoney)) {
                     compoundedMoney = changedCompoundedMoney;
                     clearCompoundingMap = false;
@@ -1057,11 +1059,11 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
     private Money updateMapWithCompoundingDetails(final LoanApplicationTerms loanApplicationTerms, final HolidayDetailDTO holidayDetailDTO,
             final MonetaryCurrency currency, final TreeMap<LocalDate, Money> compoundingMap,
             final LoanRepaymentScheduleInstallment loanRepaymentScheduleInstallment, final LocalDate lastRestDate,
-            final Money compoundedMoney, final LocalDate scheduledDueDate) {
+            final Money compoundedMoney, final LocalDate scheduledDueDate, List<LoanRescheduleRequest> loanRescheduleRequests) {
         Money ignoreMoney = compoundedMoney;
         if (loanApplicationTerms.getInterestRecalculationCompoundingMethod().isCompoundingEnabled()) {
             LocalDate compoundingEffectiveDate = getNextCompoundScheduleDate(loanRepaymentScheduleInstallment.getDueDate().minusDays(1),
-                    loanApplicationTerms, holidayDetailDTO);
+                    loanApplicationTerms, holidayDetailDTO, loanRescheduleRequests);
 
             if (compoundingEffectiveDate.isBefore(DateUtils.getLocalDateOfTenant())) {
                 Money amount = Money.zero(currency);
@@ -1105,12 +1107,13 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
 
     private void populateCompoundingDatesInPeriod(final LocalDate startDate, final LocalDate endDate, final LocalDate currentDate,
             final LoanApplicationTerms loanApplicationTerms, final HolidayDetailDTO holidayDetailDTO,
-            final Map<LocalDate, Money> compoundingMap, final Set<LoanCharge> charges, MonetaryCurrency currency) {
+            final Map<LocalDate, Money> compoundingMap, final Set<LoanCharge> charges, MonetaryCurrency currency,
+            List<LoanRescheduleRequest> loanRescheduleRequests) {
         if (loanApplicationTerms.getInterestRecalculationCompoundingMethod().isCompoundingEnabled()) {
             LocalDate lastCompoundingDate = startDate;
             LocalDate compoundingDate = startDate;
             while (compoundingDate.isBefore(endDate) && compoundingDate.isBefore(currentDate)) {
-                compoundingDate = getNextCompoundScheduleDate(compoundingDate, loanApplicationTerms, holidayDetailDTO);
+                compoundingDate = getNextCompoundScheduleDate(compoundingDate, loanApplicationTerms, holidayDetailDTO, loanRescheduleRequests);
                 if (!compoundingDate.isBefore(currentDate)) {
                     break;
                 } else if (compoundingDate.isAfter(endDate)) {
@@ -1145,8 +1148,10 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
      */
     private void updatePrincipalPaidPortionToMap(final LoanApplicationTerms loanApplicationTerms, final HolidayDetailDTO holidayDetailDTO,
             Map<LocalDate, Money> principalPortionMap, final LoanScheduleModelPeriod installment, final RecalculationDetail detail,
-            final Money unprocessed, final List<LoanRepaymentScheduleInstallment> installments) {
-        LocalDate applicableDate = getNextRestScheduleDate(detail.getTransactionDate().minusDays(1), loanApplicationTerms, holidayDetailDTO);
+            final Money unprocessed, final List<LoanRepaymentScheduleInstallment> installments,
+            List<LoanRescheduleRequest> loanRescheduleRequests) {
+        LocalDate applicableDate = getNextRestScheduleDate(detail.getTransactionDate().minusDays(1), loanApplicationTerms, holidayDetailDTO,
+        		loanRescheduleRequests);
         updateMapWithAmount(principalPortionMap, unprocessed, applicableDate);
         installment.addPrincipalAmount(unprocessed);
         LoanRepaymentScheduleInstallment lastInstallment = installments.get(installments.size() - 1);
@@ -1230,7 +1235,8 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
     @Override
     public LoanRescheduleModel reschedule(final MathContext mathContext, final LoanRescheduleRequest loanRescheduleRequest,
             final ApplicationCurrency applicationCurrency, final HolidayDetailDTO holidayDetailDTO,
-            final CalendarInstance restCalendarInstance, final CalendarInstance compoundingCalendarInstance) {
+            final CalendarInstance restCalendarInstance, final CalendarInstance compoundingCalendarInstance,
+            List<LoanRescheduleRequest> loanRescheduleRequests) {
 
         final Loan loan = loanRescheduleRequest.getLoan();
         final LoanSummary loanSummary = loan.getSummary();
@@ -1377,7 +1383,8 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
             // update the number of repayments
             loanApplicationTerms.updateNumberOfRepayments(numberOfRepayments);
 
-            LocalDate loanEndDate = this.scheduledDateGenerator.getLastRepaymentDate(loanApplicationTerms, holidayDetailDTO);
+            LocalDate loanEndDate = this.scheduledDateGenerator.getLastRepaymentDate(loanApplicationTerms, holidayDetailDTO,
+            		loanRescheduleRequests);
             loanApplicationTerms.updateLoanEndDate(loanEndDate);
 
             if (newInterestRate != null) {
@@ -1412,7 +1419,7 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
                         || period.periodDueDate().isAfter(loanRescheduleRequest.getRescheduleFromDate()) || period.isNew()) {
 
                     installmentDueDate = this.scheduledDateGenerator.generateNextRepaymentDate(installmentDueDate, loanApplicationTerms,
-                            false);
+                            false, loanRescheduleRequests);
 
                     if (adjustedDueDate != null && periodNumber == 1) {
                         installmentDueDate = adjustedDueDate;
@@ -1695,7 +1702,8 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
     @Override
     public LoanScheduleModel rescheduleNextInstallments(final MathContext mc, final LoanApplicationTerms loanApplicationTerms,
             final Set<LoanCharge> loanCharges, final HolidayDetailDTO holidayDetailDTO, final List<LoanTransaction> transactions,
-            final LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor) {
+            final LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor,
+            List<LoanRescheduleRequest> loanRescheduleRequests) {
 
         Collection<RecalculationDetail> recalculationDetails = new ArrayList<>();
         for (LoanTransaction loanTransaction : transactions) {
@@ -1704,7 +1712,7 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
         }
         final LocalDate scheduleTillDate = null;
         return generate(mc, loanApplicationTerms, loanCharges, holidayDetailDTO, recalculationDetails,
-                loanRepaymentScheduleTransactionProcessor, scheduleTillDate);
+                loanRepaymentScheduleTransactionProcessor, scheduleTillDate, loanRescheduleRequests);
     }
 
     private List<LoanRepaymentScheduleInstallment> fetchInstallmentsFromScheduleModel(final LoanScheduleModel loanScheduleModel) {
@@ -1728,11 +1736,11 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
     }
 
     private LocalDate getNextRestScheduleDate(LocalDate startDate, LoanApplicationTerms loanApplicationTerms,
-            final HolidayDetailDTO holidayDetailDTO) {
+            final HolidayDetailDTO holidayDetailDTO, List<LoanRescheduleRequest> loanRescheduleRequests) {
         LocalDate nextScheduleDate = null;
         if (loanApplicationTerms.getRecalculationFrequencyType().isSameAsRepayment()) {
             nextScheduleDate = this.scheduledDateGenerator.generateNextScheduleDateStartingFromDisburseDate(startDate,
-                    loanApplicationTerms, holidayDetailDTO);
+                    loanApplicationTerms, holidayDetailDTO, loanRescheduleRequests);
         } else {
             CalendarInstance calendarInstance = loanApplicationTerms.getRestCalendarInstance();
             nextScheduleDate = CalendarUtils.getNextScheduleDate(calendarInstance.getCalendar(), startDate);
@@ -1742,12 +1750,12 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
     }
 
     private LocalDate getNextCompoundScheduleDate(LocalDate startDate, LoanApplicationTerms loanApplicationTerms,
-            final HolidayDetailDTO holidayDetailDTO) {
+            final HolidayDetailDTO holidayDetailDTO, List<LoanRescheduleRequest> loanRescheduleRequests) {
         LocalDate nextScheduleDate = null;
         if (!loanApplicationTerms.getInterestRecalculationCompoundingMethod().isCompoundingEnabled()) { return null; }
         if (loanApplicationTerms.getCompoundingFrequencyType().isSameAsRepayment()) {
             nextScheduleDate = this.scheduledDateGenerator.generateNextScheduleDateStartingFromDisburseDate(startDate,
-                    loanApplicationTerms, holidayDetailDTO);
+                    loanApplicationTerms, holidayDetailDTO, loanRescheduleRequests);
         } else {
             CalendarInstance calendarInstance = loanApplicationTerms.getCompoundingCalendarInstance();
             nextScheduleDate = CalendarUtils.getNextScheduleDate(calendarInstance.getCalendar(), startDate);
@@ -1763,11 +1771,12 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
     public LoanRepaymentScheduleInstallment calculatePrepaymentAmount(List<LoanRepaymentScheduleInstallment> installments,
             MonetaryCurrency currency, final LocalDate onDate, LoanApplicationTerms loanApplicationTerms, MathContext mc,
             Set<LoanCharge> charges, final HolidayDetailDTO holidayDetailDTO, final List<LoanTransaction> loanTransactions,
-            final LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor) {
+            final LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor,
+            List<LoanRescheduleRequest> loanRescheduleRequests) {
 
         LocalDate calculateTill = onDate;
         if (loanApplicationTerms.getPreClosureInterestCalculationStrategy().calculateTillRestFrequencyEnabled()) {
-            calculateTill = getNextRestScheduleDate(onDate.minusDays(1), loanApplicationTerms, holidayDetailDTO);
+            calculateTill = getNextRestScheduleDate(onDate.minusDays(1), loanApplicationTerms, holidayDetailDTO, loanRescheduleRequests);
         }
         Collection<RecalculationDetail> recalculationDetails = new ArrayList<>();
         for (LoanTransaction loanTransaction : loanTransactions) {
@@ -1775,7 +1784,7 @@ public abstract class AbstractLoanScheduleGenerator implements LoanScheduleGener
                     .copyTransactionProperties(loanTransaction)));
         }
         LoanScheduleModel loanScheduleModel = generate(mc, loanApplicationTerms, charges, holidayDetailDTO, recalculationDetails,
-                loanRepaymentScheduleTransactionProcessor, calculateTill);
+                loanRepaymentScheduleTransactionProcessor, calculateTill, loanRescheduleRequests);
         installments = fetchInstallmentsFromScheduleModel(loanScheduleModel);
         loanRepaymentScheduleTransactionProcessor.handleTransaction(loanApplicationTerms.getExpectedDisbursementDate(), loanTransactions,
                 currency, installments, charges);

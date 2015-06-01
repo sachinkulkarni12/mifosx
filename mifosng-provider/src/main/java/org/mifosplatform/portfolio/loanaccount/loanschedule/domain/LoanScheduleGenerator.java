@@ -24,16 +24,19 @@ import org.mifosplatform.portfolio.loanaccount.rescheduleloan.domain.LoanResched
 public interface LoanScheduleGenerator {
 
     LoanScheduleModel generate(MathContext mc, LoanApplicationTerms loanApplicationTerms, Set<LoanCharge> loanCharges,
-            final HolidayDetailDTO holidayDetailDTO);
+            final HolidayDetailDTO holidayDetailDTO, List<LoanRescheduleRequest> loanRescheduleRequests);
 
     LoanScheduleModel rescheduleNextInstallments(MathContext mc, LoanApplicationTerms loanApplicationTerms, Set<LoanCharge> loanCharges,
             final HolidayDetailDTO holidayDetailDTO, List<LoanTransaction> transactions,
-            LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor);
+            LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor,
+            List<LoanRescheduleRequest> loanRescheduleRequests);
 
     LoanRepaymentScheduleInstallment calculatePrepaymentAmount(List<LoanRepaymentScheduleInstallment> installments,
             MonetaryCurrency currency, LocalDate onDate, LoanApplicationTerms loanApplicationTerms, MathContext mc,
-            Set<LoanCharge> charges, HolidayDetailDTO holidayDetailDTO, List<LoanTransaction> loanTransactions, LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor);
+            Set<LoanCharge> charges, HolidayDetailDTO holidayDetailDTO, List<LoanTransaction> loanTransactions, LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor,
+            List<LoanRescheduleRequest> loanRescheduleRequests);
 
     LoanRescheduleModel reschedule(final MathContext mathContext, final LoanRescheduleRequest loanRescheduleRequest,
-            final ApplicationCurrency applicationCurrency, final HolidayDetailDTO holidayDetailDTO, CalendarInstance restCalendarInstance, CalendarInstance compoundingCalendarInstance);
+            final ApplicationCurrency applicationCurrency, final HolidayDetailDTO holidayDetailDTO, CalendarInstance restCalendarInstance, CalendarInstance compoundingCalendarInstance,
+            List<LoanRescheduleRequest> loanRescheduleRequests);
 }

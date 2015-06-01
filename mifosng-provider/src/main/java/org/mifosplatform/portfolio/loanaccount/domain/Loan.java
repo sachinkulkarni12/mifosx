@@ -100,6 +100,7 @@ import org.mifosplatform.portfolio.loanaccount.loanschedule.domain.LoanScheduleG
 import org.mifosplatform.portfolio.loanaccount.loanschedule.domain.LoanScheduleGeneratorFactory;
 import org.mifosplatform.portfolio.loanaccount.loanschedule.domain.LoanScheduleModel;
 import org.mifosplatform.portfolio.loanaccount.loanschedule.domain.LoanScheduleModelPeriod;
+import org.mifosplatform.portfolio.loanaccount.rescheduleloan.domain.LoanRescheduleRequest;
 import org.mifosplatform.portfolio.loanproduct.LoanProductConstants;
 import org.mifosplatform.portfolio.loanproduct.domain.AmortizationMethod;
 import org.mifosplatform.portfolio.loanproduct.domain.InterestCalculationPeriodMethod;
@@ -299,6 +300,13 @@ public class Loan extends AbstractPersistable<Long> {
     @LazyCollection(LazyCollectionOption.FALSE)
     @OneToMany(cascade = CascadeType.ALL, mappedBy = "loan", orphanRemoval = true)
     private final List<LoanTransaction> loanTransactions = new ArrayList<>();
+    
+ // see
+        // http://stackoverflow.com/questions/4334970/hibernate-cannot-simultaneously-fetch-multiple-bags
+        @OrderBy(value = "rescheduleFromDate, id")
+        @LazyCollection(LazyCollectionOption.FALSE)
+        @OneToMany(cascade = CascadeType.ALL, mappedBy = "loan", orphanRemoval = true)
+        private final List<LoanRescheduleRequest> loanRescheduleRequests = new ArrayList<>();
 
     @Embedded
     private LoanSummary summary;
@@ -2501,7 +2509,7 @@ public class Loan extends AbstractPersistable<Long> {
                 this.loanProduct.preCloseInterestCalculationStrategy(), rescheduleStrategyMethod);
 
         final LoanScheduleModel loanSchedule = loanScheduleGenerator.generate(mc, loanApplicationTerms, charges(),
-                scheduleGeneratorDTO.getHolidayDetailDTO());
+                scheduleGeneratorDTO.getHolidayDetailDTO(),loanRescheduleRequests);
         return loanSchedule;
     }
 
@@ -4462,6 +4470,10 @@ public class Loan extends AbstractPersistable<Long> {
         }
         return loanCharges;
     }
+    
+    public List<LoanRescheduleRequest> loanRescheduleRequests () {
+    	        return this.loanRescheduleRequests;
+    }
 
     public Set<LoanInstallmentCharge> generateInstallmentLoanCharges(final LoanCharge loanCharge) {
         final Set<LoanInstallmentCharge> loanChargePerInstallments = new HashSet<>();
@@ -4847,7 +4859,7 @@ public class Loan extends AbstractPersistable<Long> {
 
         final LoanScheduleModel loanSchedule = loanScheduleGenerator.rescheduleNextInstallments(mc, loanApplicationTerms, charges(),
                 generatorDTO.getHolidayDetailDTO(), retreiveListOfTransactionsPostDisbursementExcludeAccruals(),
-                loanRepaymentScheduleTransactionProcessor);
+                loanRepaymentScheduleTransactionProcessor, this.loanRescheduleRequests);
         return loanSchedule;
     }
 
@@ -4950,7 +4962,7 @@ public class Loan extends AbstractPersistable<Long> {
                     .determineProcessor(this.transactionProcessingStrategy);
             installment = loanScheduleGenerator.calculatePrepaymentAmount(this.repaymentScheduleInstallments, getCurrency(), onDate,
                     loanApplicationTerms, mc, charges(), holidayDetailDTO, retreiveListOfTransactionsPostDisbursementExcludeAccruals(),
-                    loanRepaymentScheduleTransactionProcessor);
+                    loanRepaymentScheduleTransactionProcessor,  this.loanRescheduleRequests);
         } else {
             installment = this.getTotalOutstandingOnLoan();
         }
