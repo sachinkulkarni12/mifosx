@@ -803,7 +803,7 @@ public class Loan extends AbstractPersistable<Long> {
         BigDecimal amount = BigDecimal.ZERO;
         switch (loanCharge.getChargeCalculation()) {
             case PERCENT_OF_AMOUNT:
-                amount = getPrincpal().getAmount();
+                amount = getApprovedPrincipal();
             break;
             case PERCENT_OF_AMOUNT_AND_INTEREST:
                 final BigDecimal totalInterestCharged = getTotalInterest();
