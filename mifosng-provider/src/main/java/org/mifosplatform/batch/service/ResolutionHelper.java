@@ -6,6 +6,7 @@
 package org.mifosplatform.batch.service;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map.Entry;
 
@@ -125,22 +126,46 @@ public class ResolutionHelper {
 
         final JsonModel responseJsonModel = JsonModel.model(parentResponse.getBody());
 
-        // Gets the body from current Request as a JsonObject
-        final JsonObject jsonRequestBody = this.fromJsonHelper.parse(request.getBody()).getAsJsonObject();
+     // Gets the body from current Request as a JsonObject
+        JsonObject jsonRequestBody = null;
+        JsonArray jsonRequestArrayBody = null;
+        if(this.fromJsonHelper.parse(request.getBody()).isJsonObject()){
+        	jsonRequestBody = this.fromJsonHelper.parse(request.getBody()).getAsJsonObject();
+        }else{
+        	jsonRequestArrayBody = this.fromJsonHelper.parse(request.getBody()).getAsJsonArray();
+        	
+        }
+        
 
-        JsonObject jsonResultBody = new JsonObject();
+        JsonObject jsonResultBody = null;
+        JsonArray  jsonResultArray = new JsonArray();
 
         // Iterate through each element in the requestBody to find dependent
         // parameter
-        for (Entry<String, JsonElement> element : jsonRequestBody.entrySet()) {
-            final String key = element.getKey();
-            final JsonElement value = resolveDependentVariables(element, responseJsonModel);
-            jsonResultBody.add(key, value);
-        }
-
-        // Set the body after dependency resolution
-        br.setBody(jsonResultBody.toString());
-
+		if (jsonRequestArrayBody != null) {
+			Iterator<JsonElement> jsonRequestIterator = jsonRequestArrayBody.iterator();
+			while (jsonRequestIterator.hasNext()) {
+				jsonResultBody = new JsonObject();
+				jsonRequestBody = jsonRequestIterator.next().getAsJsonObject();
+				for (Entry<String, JsonElement> element : jsonRequestBody.entrySet()) {
+					final String key = element.getKey();
+					final JsonElement value = resolveDependentVariables(element, responseJsonModel);
+					jsonResultBody.add(key, value);
+				}
+				jsonResultArray.add(jsonResultBody);
+				
+			}
+			br.setBody(jsonResultArray.toString());
+		} else {
+			jsonResultBody = new JsonObject();
+			for (Entry<String, JsonElement> element : jsonRequestBody.entrySet()) {
+				final String key = element.getKey();
+				final JsonElement value = resolveDependentVariables(element,responseJsonModel);
+				jsonResultBody.add(key, value);
+			}
+			br.setBody(jsonResultBody.toString());
+		}
+        
         // Also check the relativeUrl for any dependency resolution
         String relativeUrl = request.getRelativeUrl();
 

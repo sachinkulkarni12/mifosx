@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -24,6 +25,7 @@ import org.hibernate.exception.GenericJDBCException;
 import org.hibernate.exception.SQLGrammarException;
 import org.joda.time.LocalDate;
 import org.joda.time.LocalDateTime;
+import org.mifosplatform.infrastructure.codes.data.CodeData;
 import org.mifosplatform.infrastructure.codes.service.CodeReadPlatformService;
 import org.mifosplatform.infrastructure.configuration.domain.ConfigurationDomainService;
 import org.mifosplatform.infrastructure.core.api.JsonCommand;
@@ -134,7 +136,7 @@ public class ReadWriteNonCoreDataServiceImpl implements ReadWriteNonCoreDataServ
         }
 
         // PERMITTED datatables
-        final String sql = "select application_table_name, registered_table_name" + " from x_registered_table " + " where exists"
+        final String sql = "select id, application_table_name, registered_table_name, combine_with_main_entity, minimum_rows, is_multirow" + " from x_registered_table " + " where exists"
                 + " (select 'f'" + " from m_appuser_role ur " + " join m_role r on r.id = ur.role_id"
                 + " left join m_role_permission rp on rp.role_id = r.id" + " left join m_permission p on p.id = rp.permission_id"
                 + " where ur.appuser_id = " + this.context.authenticatedUser().getId()
@@ -145,12 +147,16 @@ public class ReadWriteNonCoreDataServiceImpl implements ReadWriteNonCoreDataServ
 
         final List<DatatableData> datatables = new ArrayList<>();
         while (rs.next()) {
+        	final Integer id = rs.getInt("id");
             final String appTableName = rs.getString("application_table_name");
             final String registeredDatatableName = rs.getString("registered_table_name");
+            final Boolean combineWithMainEntity = rs.getBoolean("combine_with_main_entity");
+            final Integer minimumNoOfRows = rs.getInt("minimum_rows");
+            final Boolean isMultiRow = rs.getBoolean("is_multirow");
             final List<ResultsetColumnHeaderData> columnHeaderData = this.genericDataService
                     .fillResultsetColumnHeaders(registeredDatatableName);
 
-            datatables.add(DatatableData.create(appTableName, registeredDatatableName, columnHeaderData));
+            datatables.add(DatatableData.create(id, appTableName, registeredDatatableName, combineWithMainEntity, minimumNoOfRows, isMultiRow, columnHeaderData));
         }
 
         return datatables;
@@ -160,7 +166,7 @@ public class ReadWriteNonCoreDataServiceImpl implements ReadWriteNonCoreDataServ
     public DatatableData retrieveDatatable(final String datatable) {
 
         // PERMITTED datatables
-        final String sql = "select application_table_name, registered_table_name" + " from x_registered_table " + " where exists"
+        final String sql = "select id, application_table_name, registered_table_name, combine_with_main_entity, minimum_rows, is_multirow" + " from x_registered_table " + " where exists"
                 + " (select 'f'" + " from m_appuser_role ur " + " join m_role r on r.id = ur.role_id"
                 + " left join m_role_permission rp on rp.role_id = r.id" + " left join m_permission p on p.id = rp.permission_id"
                 + " where ur.appuser_id = " + this.context.authenticatedUser().getId() + " and registered_table_name='" + datatable + "'"
@@ -171,12 +177,16 @@ public class ReadWriteNonCoreDataServiceImpl implements ReadWriteNonCoreDataServ
 
         DatatableData datatableData = null;
         while (rs.next()) {
+        	final Integer id = rs.getInt("id");
             final String appTableName = rs.getString("application_table_name");
             final String registeredDatatableName = rs.getString("registered_table_name");
+            final Boolean combineWithMainEntity = rs.getBoolean("combine_with_main_entity");
+            final Integer minimumNoOfRows = rs.getInt("minimum_rows");
+            final Boolean isMultiRow = rs.getBoolean("is_multirow");
             final List<ResultsetColumnHeaderData> columnHeaderData = this.genericDataService
                     .fillResultsetColumnHeaders(registeredDatatableName);
 
-            datatableData = DatatableData.create(appTableName, registeredDatatableName, columnHeaderData);
+            datatableData = DatatableData.create(id, appTableName, registeredDatatableName, combineWithMainEntity, minimumNoOfRows, isMultiRow, columnHeaderData);
         }
 
         return datatableData;
@@ -188,12 +198,12 @@ public class ReadWriteNonCoreDataServiceImpl implements ReadWriteNonCoreDataServ
 
     @Transactional
     @Override
-    public void registerDatatable(final String dataTableName, final String applicationTableName) {
+    public void registerDatatable(final String dataTableName, final String applicationTableName, final Boolean combineWithMainEntity, final Boolean multiRow) {
 
         Integer category = DataTableApiConstant.CATEGORY_DEFAULT;
 
         final String permissionSql = this._getPermissionSql(dataTableName);
-        this._registerDataTable(applicationTableName, dataTableName, category, permissionSql);
+        this._registerDataTable(applicationTableName, dataTableName, category, permissionSql, combineWithMainEntity, multiRow);
 
     }
 
@@ -203,12 +213,14 @@ public class ReadWriteNonCoreDataServiceImpl implements ReadWriteNonCoreDataServ
 
         final String applicationTableName = this.getTableName(command.getUrl());
         final String dataTableName = this.getDataTableName(command.getUrl());
+        final Boolean combineWithMainEntity = false;
+        final Boolean isMultiRow = false;
 
         Integer category = this.getCategory(command);
 
         this.dataTableValidator.validateDataTableRegistration(command.json());
         final String permissionSql = this._getPermissionSql(dataTableName);
-        this._registerDataTable(applicationTableName, dataTableName, category, permissionSql);
+        this._registerDataTable(applicationTableName, dataTableName, category, permissionSql, combineWithMainEntity, isMultiRow);
 
     }
 
@@ -217,24 +229,26 @@ public class ReadWriteNonCoreDataServiceImpl implements ReadWriteNonCoreDataServ
     public void registerDatatable(final JsonCommand command, final String permissionSql) {
         final String applicationTableName = this.getTableName(command.getUrl());
         final String dataTableName = this.getDataTableName(command.getUrl());
-
+        final Boolean combineWithMainEntity = false;
+        final Boolean isMultiRow = false;
+        
         Integer category = this.getCategory(command);
 
         this.dataTableValidator.validateDataTableRegistration(command.json());
 
-        this._registerDataTable(applicationTableName, dataTableName, category, permissionSql);
+        this._registerDataTable(applicationTableName, dataTableName, category, permissionSql, combineWithMainEntity, isMultiRow);
 
     }
 
     @Transactional
     private void _registerDataTable(final String applicationTableName, final String dataTableName, final Integer category,
-            final String permissionsSql) {
+            final String permissionsSql, Boolean combineWithMainEntity, final Boolean multiRow) {
 
         validateAppTable(applicationTableName);
         assertDataTableExists(dataTableName);
 
-        final String registerDatatableSql = "insert into x_registered_table (registered_table_name, application_table_name,category) values ('"
-                + dataTableName + "', '" + applicationTableName + "', '" + category + "')";
+        final String registerDatatableSql = "insert into x_registered_table (registered_table_name, application_table_name,category, combine_with_main_entity, is_multirow) values ('"
+                + dataTableName + "', '" + applicationTableName + "', '" + category + "', "+combineWithMainEntity+", "+multiRow+")";
 
         try {
 
@@ -348,13 +362,23 @@ public class ReadWriteNonCoreDataServiceImpl implements ReadWriteNonCoreDataServ
             final CommandProcessingResult commandProcessingResult = checkMainResourceExistsWithinScope(appTable, appTableId);
 
             final List<ResultsetColumnHeaderData> columnHeaders = this.genericDataService.fillResultsetColumnHeaders(dataTableName);
-
+            JsonElement jsonElement = this.fromJsonHelper.parse(command.json());
             final Type typeOfMap = new TypeToken<Map<String, String>>() {}.getType();
-            final Map<String, String> dataParams = this.fromJsonHelper.extractDataMap(typeOfMap, command.json());
-
-            final String sql = getAddSql(columnHeaders, dataTableName, getFKField(appTable), appTableId, dataParams);
-
-            this.jdbcTemplate.update(sql);
+            if(jsonElement.isJsonArray()){
+            	JsonArray  jsonArray = (JsonArray)jsonElement;
+                Iterator<JsonElement> jsonArrayIterator = jsonArray.iterator();
+                JsonObject jsonObject = null;
+                while (jsonArrayIterator.hasNext()) {
+	                jsonObject = jsonArrayIterator.next().getAsJsonObject();
+	                final Map<String, String> dataParams = this.fromJsonHelper.extractDataMap(typeOfMap, jsonObject.toString());
+	                final String sql = getAddSql(columnHeaders, dataTableName, getFKField(appTable), appTableId, dataParams);
+	                this.jdbcTemplate.update(sql);
+                }
+            }else{
+            	final Map<String, String> dataParams = this.fromJsonHelper.extractDataMap(typeOfMap, command.json());
+                final String sql = getAddSql(columnHeaders, dataTableName, getFKField(appTable), appTableId, dataParams);
+                this.jdbcTemplate.update(sql);
+            }
 
             return commandProcessingResult; //
 
@@ -514,7 +538,9 @@ public class ReadWriteNonCoreDataServiceImpl implements ReadWriteNonCoreDataServ
             final JsonArray columns = this.fromJsonHelper.extractJsonArrayNamed("columns", element);
             datatableName = this.fromJsonHelper.extractStringNamed("datatableName", element);
             final String apptableName = this.fromJsonHelper.extractStringNamed("apptableName", element);
+            final Boolean combineWithMainEntity = this.fromJsonHelper.extractBooleanNamed("combineWithMainEntity", element);
             Boolean multiRow = this.fromJsonHelper.extractBooleanNamed("multiRow", element);
+            
 
             /***
              * In cases of tables storing hierarchical entities (like m_group),
@@ -550,6 +576,7 @@ public class ReadWriteNonCoreDataServiceImpl implements ReadWriteNonCoreDataServ
             for (final JsonElement column : columns) {
                 parseDatatableColumnObjectForCreate(column.getAsJsonObject(), sqlBuilder, constrainBuilder, dataTableNameAlias,
                         codeMappings, isConstraintApproach);
+                                
             }
 
             // Remove trailing comma and space
@@ -570,8 +597,10 @@ public class ReadWriteNonCoreDataServiceImpl implements ReadWriteNonCoreDataServ
             sqlBuilder = sqlBuilder.append(") ENGINE=InnoDB DEFAULT CHARSET=utf8;");
             this.jdbcTemplate.execute(sqlBuilder.toString());
 
-            registerDatatable(datatableName, apptableName);
+            registerDatatable(datatableName, apptableName, combineWithMainEntity, multiRow);
             registerColumnCodeMapping(codeMappings);
+            registerDatatableMetadata(datatableName,columns);
+            updateXRegisteredDisplayRules(datatableName,columns);
         } catch (final SQLGrammarException e) {
             final Throwable realCause = e.getCause();
             final List<ApiParameterError> dataValidationErrors = new ArrayList<>();
@@ -593,7 +622,77 @@ public class ReadWriteNonCoreDataServiceImpl implements ReadWriteNonCoreDataServ
         return new CommandProcessingResultBuilder().withCommandId(command.commandId()).withResourceIdAsString(datatableName).build();
     }
 
-    private void parseDatatableColumnForUpdate(final JsonObject column,
+    private void updateXRegisteredDisplayRules(String datatableName, JsonArray columns) {
+    	
+    	 String sql = "Select xrt.id from x_registered_table xrt where xrt.registered_table_name = '"+datatableName+"'";
+         Integer xResgisteredTableId = this.jdbcTemplate.queryForInt(sql);
+			for(final JsonElement column : columns){
+				 final String name = this.fromJsonHelper.extractStringNamed("name", column);
+				 final Long dependsOn = this.fromJsonHelper.extractLongNamed("dependsOn", column);
+				 final JsonArray visibilityCriteria = this.fromJsonHelper.extractJsonArrayNamed("visibilityCriteria", column);
+				
+				 Long associatedColumnId = null;
+				 if(dependsOn != null){
+		            	
+		            	CodeData codeData = this.codeReadPlatformService.retrieveCode(dependsOn);
+		            	String dependentColumnName = codeData.getCodeName();
+		            	String sqlQuery = "SELECT xrtm.id FROM x_registered_table_metadata xrtm WHERE xrtm.column_name = '"+dependentColumnName+"' " +
+		            			"and xrtm.register_table_id = "+xResgisteredTableId+"";
+		            	associatedColumnId = this.jdbcTemplate.queryForLong(sqlQuery);
+		            	String updateQuery = "UPDATE x_registered_table_metadata xrtm SET xrtm.associate_with = "+associatedColumnId+" WHERE " +
+		            			"xrtm.column_name = '"+name+"' AND xrtm.register_table_id = "+xResgisteredTableId+"";
+		    	            this.jdbcTemplate.update(updateQuery);
+		         }
+				 if(visibilityCriteria != null) {
+	            	for(final JsonElement criteria : visibilityCriteria) {
+	            		final String columnName = this.fromJsonHelper.extractStringNamed("columnName", criteria);
+	            		final String value = this.fromJsonHelper.extractStringNamed("value", criteria);
+	            		String watchColumnSql = "SELECT xrtm.id from x_registered_table_metadata xrtm where xrtm.column_name = '"+columnName+"' "+
+	                    		"and xrtm.register_table_id = "+xResgisteredTableId+"";
+	            		Integer watchColumnId =  this.jdbcTemplate.queryForInt(watchColumnSql);
+	                    String selectSql = "SELECT xrtm.id from x_registered_table_metadata xrtm where xrtm.column_name = '"+name+"' "+
+	                    		"and xrtm.register_table_id = "+xResgisteredTableId+"";
+	                    Integer xRegisterTableMetadataId = this.jdbcTemplate.queryForInt(selectSql);
+	                    String insertQuery = "INSERT INTO x_registered_table_display_rules (x_register_table_metadata_id,watch_column) VALUES" +
+	                    		"("+xRegisterTableMetadataId+","+watchColumnId+")";
+	                    this.jdbcTemplate.execute(insertQuery);
+	                    
+	                    String query = "SELECT dtrv.id FROM x_registered_table_display_rules dtrv WHERE dtrv.x_register_table_metadata_id = "+xRegisterTableMetadataId+"";
+	                    Integer rulesValueId = this.jdbcTemplate.queryForInt(query);
+	                    String sqlQuery = "INSERT INTO x_registered_table_display_rules_value(code_value_id,x_registered_table_display_rules_id)" +
+	                    		"VALUES("+Integer.parseInt(value)+","+rulesValueId+")";
+	                    this.jdbcTemplate.execute(sqlQuery);
+	                    
+	            	}
+		        }
+			}
+		
+	}
+
+	@Transactional
+    private void registerDatatableMetadata(String datatableName, JsonArray columns) {
+    	String sql = null;
+    	String query = null;
+    	sql = "Select xrt.id from x_registered_table xrt where xrt.registered_table_name = '"+datatableName+"'";
+        int xResgisteredTableId = this.jdbcTemplate.queryForInt(sql);
+        
+    	for(final JsonElement column : columns){
+    		final String name = this.fromJsonHelper.extractStringNamed("name", column);
+    		final String displayName = this.fromJsonHelper.extractStringNamed("displayName", column);
+            final Long displayPosition = this.fromJsonHelper.extractLongNamed("displayPosition", column);
+            Boolean visible = this.fromJsonHelper.extractBooleanNamed("visible", column);
+            final Boolean mandatoryIfVisible = this.fromJsonHelper.extractBooleanNamed("mandatoryIfVisible", column);
+   	            
+            Long associatedColumnId = null;
+            query = "insert into x_registered_table_metadata(register_table_id,column_name,associate_with,display_name,order_position,visible,mandatory_if_visible) " +
+            		"values("+xResgisteredTableId+", '"+name+"', "+associatedColumnId+", '"+displayName+"', "+displayPosition+", "+visible+", "+mandatoryIfVisible+")";
+            this.jdbcTemplate.execute(query);
+    	
+    	}
+ 		
+	}
+
+	private void parseDatatableColumnForUpdate(final JsonObject column,
             final Map<String, ResultsetColumnHeaderData> mapColumnNameDefinition, StringBuilder sqlBuilder, final String datatableName,
             final StringBuilder constrainBuilder, final Map<String, Long> codeMappings, final List<String> removeMappings,
             final boolean isConstraintApproach) {
@@ -820,6 +919,8 @@ public class ReadWriteNonCoreDataServiceImpl implements ReadWriteNonCoreDataServ
             final JsonArray addColumns = this.fromJsonHelper.extractJsonArrayNamed("addColumns", element);
             final JsonArray dropColumns = this.fromJsonHelper.extractJsonArrayNamed("dropColumns", element);
             final String apptableName = this.fromJsonHelper.extractStringNamed("apptableName", element);
+            final Boolean combineWithMainEntity = this.fromJsonHelper.extractBooleanNamed("combineWithMainEntity", element);
+            Boolean isMultiRow = false;
 
             validateDatatableName(datatableName);
 
@@ -860,8 +961,9 @@ public class ReadWriteNonCoreDataServiceImpl implements ReadWriteNonCoreDataServ
 
                     this.jdbcTemplate.execute(sqlBuilder.toString());
 
+                    isMultiRow = checkDataTableIsMultiRow(datatableName);
                     deregisterDatatable(datatableName);
-                    registerDatatable(datatableName, apptableName);
+                    registerDatatable(datatableName, apptableName, combineWithMainEntity, isMultiRow);
                 }
             }
 
@@ -872,10 +974,22 @@ public class ReadWriteNonCoreDataServiceImpl implements ReadWriteNonCoreDataServ
                 StringBuilder sqlBuilder = new StringBuilder("ALTER TABLE `" + datatableName + "`");
                 final StringBuilder constrainBuilder = new StringBuilder();
                 final List<String> codeMappings = new ArrayList<>();
+                DatatableData datatableData = retrieveDatatable(datatableName);
+            	Integer xRegisterTableId = datatableData.getId();
+            	final StringBuilder deleteColumnValues = new StringBuilder();
+            	StringBuilder sql = new StringBuilder("DELETE FROM `x_registered_table_metadata` WHERE " );
+                int i = 0;
                 for (final JsonElement column : dropColumns) {
                     parseDatatableColumnForDrop(column.getAsJsonObject(), sqlBuilder, datatableName, constrainBuilder, codeMappings);
-                }
-
+                    final String name = (column.getAsJsonObject().has("name")) ? column.getAsJsonObject().get("name").getAsString() : null;
+                    if(i == 0){
+                    	deleteColumnValues.append("'"+name+"'");
+                    }else{
+                    	deleteColumnValues.append(", '"+name+"'");
+                    }
+                    i++;
+                 }
+                sql.append("column_name IN  ("+deleteColumnValues+") AND register_table_id = "+xRegisterTableId+"");
                 // Remove the first comma, right after ALTER TABLE `datatable`
                 final int indexOfFirstComma = sqlBuilder.indexOf(",");
                 if (indexOfFirstComma != -1) {
@@ -883,6 +997,7 @@ public class ReadWriteNonCoreDataServiceImpl implements ReadWriteNonCoreDataServ
                 }
                 sqlBuilder.append(constrainBuilder);
                 this.jdbcTemplate.execute(sqlBuilder.toString());
+                this.jdbcTemplate.execute(sql.toString());
                 deleteColumnCodeMapping(codeMappings);
             }
             if (addColumns != null) {
@@ -894,7 +1009,8 @@ public class ReadWriteNonCoreDataServiceImpl implements ReadWriteNonCoreDataServ
                     parseDatatableColumnForAdd(column.getAsJsonObject(), sqlBuilder, datatableName.toLowerCase().replaceAll("\\s", "_"),
                             constrainBuilder, codeMappings, isConstraintApproach);
                 }
-
+                registerDatatableMetadata(datatableName,addColumns);
+                updateXRegisteredDisplayRules(datatableName,addColumns);
                 // Remove the first comma, right after ALTER TABLE `datatable`
                 final int indexOfFirstComma = sqlBuilder.indexOf(",");
                 if (indexOfFirstComma != -1) {
@@ -910,14 +1026,21 @@ public class ReadWriteNonCoreDataServiceImpl implements ReadWriteNonCoreDataServ
                 final StringBuilder constrainBuilder = new StringBuilder();
                 final Map<String, Long> codeMappings = new HashMap<>();
                 final List<String> removeMappings = new ArrayList<>();
+                DatatableData datatableData = retrieveDatatable(datatableName);
+            	Integer xRegisterTableId = datatableData.getId();
                 for (final JsonElement column : changeColumns) {
                     // remove NULL values from column where mandatory is true
                     removeNullValuesFromStringColumn(datatableName, column.getAsJsonObject(), mapColumnNameDefinition);
 
                     parseDatatableColumnForUpdate(column.getAsJsonObject(), mapColumnNameDefinition, sqlBuilder, datatableName,
                             constrainBuilder, codeMappings, removeMappings, isConstraintApproach);
+                    String name = (column.getAsJsonObject().has("name")) ? column.getAsJsonObject().get("name").getAsString() : null;
+                    String newName = (column.getAsJsonObject().has("newName")) ? column.getAsJsonObject().get("newName").getAsString() : name;
+                    String sql = "UPDATE `x_registered_table_metadata` SET column_name = '"+newName+"' WHERE column_name = '"+name+"' AND register_table_id = "+xRegisterTableId+"";
+                    this.jdbcTemplate.execute(sql.toString());
+                 
                 }
-
+                updateXRegisteredDisplayRules(datatableName,changeColumns);
                 // Remove the first comma, right after ALTER TABLE `datatable`
                 final int indexOfFirstComma = sqlBuilder.indexOf(",");
                 if (indexOfFirstComma != -1) {
@@ -960,6 +1083,17 @@ public class ReadWriteNonCoreDataServiceImpl implements ReadWriteNonCoreDataServ
     }
 
     @Transactional
+    public Boolean checkDataTableIsMultiRow(String datatableName) {
+    	
+    	Boolean isMultiRow = false;
+		if (!isRegisteredDataTable(datatableName)) { throw new DatatableNotFoundException(datatableName); }
+		String query = "SELECT  xrt.is_multirow x_registered_table xrt where xrt.registered_table_name = '" + datatableName + "'";
+		isMultiRow = this.jdbcTemplate.queryForObject(query, Boolean.class);
+		
+		return isMultiRow;
+	}
+
+	@Transactional
     @Override
     public void deleteDatatable(final String datatableName) {
 

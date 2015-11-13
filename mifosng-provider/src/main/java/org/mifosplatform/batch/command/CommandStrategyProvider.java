@@ -85,6 +85,9 @@ public class CommandStrategyProvider {
                 "approveLoanCommandStrategy");
         this.commandStrategies.put(CommandContext.resource("loans\\/\\d+\\?command=disburse").method("POST").build(),
                 "disburseLoanCommandStrategy");
+        this.commandStrategies.put(CommandContext.resource("datatables\\/\\w+/\\d+\\?genericResultSet=true").method("POST").build(), "makeDataTableCommandStrategy");
+        this.commandStrategies.put(CommandContext.resource("datatables\\/\\w+/\\d+\\?genericResultSet=true").method("PUT").build(), "updateDatatableEntryCommandStrategy");
+        this.commandStrategies.put(CommandContext.resource("datatables\\/\\w+/\\d+/\\d+\\?genericResultSet=true").method("PUT").build(), "updateDatatableEntryCommandStrategy");
     }
 
 }
