@@ -208,6 +208,15 @@ public final class Client extends AbstractPersistable<Long> {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "client_classification_cv_id", nullable = true)
     private CodeValue clientClassification;
+    
+    @Column(name = "address", nullable = true)
+    private String address;
+    
+    @Column(name = "state", nullable = true)
+    private String state;
+    
+    @Column(name = "pincode", nullable = true)
+    private String pincode;
 
     public static Client createNew(final AppUser currentUser, final Office clientOffice, final Group clientParentGroup, final Staff staff,
             final SavingsProduct savingsProduct, final CodeValue gender, final CodeValue clientType, final CodeValue clientClassification,
@@ -221,6 +230,9 @@ public final class Client extends AbstractPersistable<Long> {
         final String middlename = command.stringValueOfParameterNamed(ClientApiConstants.middlenameParamName);
         final String lastname = command.stringValueOfParameterNamed(ClientApiConstants.lastnameParamName);
         final String fullname = command.stringValueOfParameterNamed(ClientApiConstants.fullnameParamName);
+        final String address = command.stringValueOfParameterNamed(ClientApiConstants.addressParamName);
+        final String state = command.stringValueOfParameterNamed(ClientApiConstants.stateParamName);
+        final String pincode = command.stringValueOfParameterNamed(ClientApiConstants.pincodeParamName);
 
         final LocalDate dataOfBirth = command.localDateValueOfParameterNamed(ClientApiConstants.dateOfBirthParamName);
 
@@ -248,7 +260,7 @@ public final class Client extends AbstractPersistable<Long> {
         final SavingsAccount account = null;
         return new Client(currentUser, status, clientOffice, clientParentGroup, accountNo, firstname, middlename, lastname, fullname,
                 activationDate, officeJoiningDate, externalId, mobileNo, staff, submittedOnDate, savingsProduct, account, dataOfBirth,
-                gender, clientType, clientClassification);
+                gender, clientType, clientClassification, address, state, pincode);
     }
 
     protected Client() {
@@ -259,7 +271,8 @@ public final class Client extends AbstractPersistable<Long> {
             final String accountNo, final String firstname, final String middlename, final String lastname, final String fullname,
             final LocalDate activationDate, final LocalDate officeJoiningDate, final String externalId, final String mobileNo,
             final Staff staff, final LocalDate submittedOnDate, final SavingsProduct savingsProduct, final SavingsAccount savingsAccount,
-            final LocalDate dateOfBirth, final CodeValue gender, final CodeValue clientType, final CodeValue clientClassification) {
+            final LocalDate dateOfBirth, final CodeValue gender, final CodeValue clientType, final CodeValue clientClassification,
+            final String address, final String state, final String pincode) {
 
         if (StringUtils.isBlank(accountNo)) {
             this.accountNumber = new RandomPasswordGenerator(19).generate();
@@ -333,6 +346,9 @@ public final class Client extends AbstractPersistable<Long> {
         }
         this.clientType = clientType;
         this.clientClassification = clientClassification;
+        this.address = address;
+        this.state = state;
+        this.pincode = pincode;
 
         deriveDisplayName();
         validate();
