@@ -75,6 +75,7 @@ import org.mifosplatform.portfolio.calendar.domain.CalendarInstanceRepository;
 import org.mifosplatform.portfolio.calendar.domain.CalendarRepository;
 import org.mifosplatform.portfolio.calendar.domain.CalendarType;
 import org.mifosplatform.portfolio.calendar.exception.CalendarParameterUpdateNotSupportedException;
+import org.mifosplatform.portfolio.calendar.exception.MissingInstallmentDateException;
 import org.mifosplatform.portfolio.charge.domain.Charge;
 import org.mifosplatform.portfolio.charge.domain.ChargePaymentMode;
 import org.mifosplatform.portfolio.charge.domain.ChargeRepositoryWrapper;
@@ -125,8 +126,10 @@ import org.mifosplatform.portfolio.loanaccount.domain.LoanLifecycleStateMachine;
 import org.mifosplatform.portfolio.loanaccount.domain.LoanOverdueInstallmentCharge;
 import org.mifosplatform.portfolio.loanaccount.domain.LoanRepaymentScheduleInstallment;
 import org.mifosplatform.portfolio.loanaccount.domain.LoanRepaymentScheduleInstallmentRepository;
+import org.mifosplatform.portfolio.loanaccount.domain.LoanRepaymentScheduleTransactionProcessorFactory;
 import org.mifosplatform.portfolio.loanaccount.domain.LoanRepository;
 import org.mifosplatform.portfolio.loanaccount.domain.LoanStatus;
+import org.mifosplatform.portfolio.loanaccount.domain.LoanSummaryWrapper;
 import org.mifosplatform.portfolio.loanaccount.domain.LoanTrancheDisbursementCharge;
 import org.mifosplatform.portfolio.loanaccount.domain.LoanTransaction;
 import org.mifosplatform.portfolio.loanaccount.domain.LoanTransactionRepository;
@@ -214,6 +217,8 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
     private final BusinessEventNotifierService businessEventNotifierService;
     private final GuarantorDomainService guarantorDomainService;
     private final FloatingRatesReadPlatformService floatingRatesReadPlatformService;
+    private final LoanSummaryWrapper loanSummaryWrapper;
+    private final LoanRepaymentScheduleTransactionProcessorFactory transactionProcessingStrategy;
 
     @Autowired
     public LoanWritePlatformServiceJpaRepositoryImpl(final PlatformSecurityContext context,
@@ -240,7 +245,8 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
             final AccountAssociationsRepository accountAssociationRepository,
             final AccountTransferDetailRepository accountTransferDetailRepository,
             final BusinessEventNotifierService businessEventNotifierService, final GuarantorDomainService guarantorDomainService,
-            final FloatingRatesReadPlatformService floatingRatesReadPlatformService) {
+            final FloatingRatesReadPlatformService floatingRatesReadPlatformService, final LoanSummaryWrapper loanSummaryWrapper, 
+            final LoanRepaymentScheduleTransactionProcessorFactory transactionProcessingStrategy) {
         this.context = context;
         this.loanEventApiJsonValidator = loanEventApiJsonValidator;
         this.loanAssembler = loanAssembler;
@@ -276,6 +282,8 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         this.businessEventNotifierService = businessEventNotifierService;
         this.guarantorDomainService = guarantorDomainService;
         this.floatingRatesReadPlatformService = floatingRatesReadPlatformService;
+        this.loanSummaryWrapper = loanSummaryWrapper;
+        this.transactionProcessingStrategy = transactionProcessingStrategy;
     }
 
     private LoanLifecycleStateMachine defaultLoanLifecycleStateMachine() {
@@ -2234,6 +2242,7 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
 
         final boolean isHolidayEnabled = this.configurationDomainService.isRescheduleRepaymentsOnHolidaysEnabled();
         final WorkingDays workingDays = this.workingDaysRepository.findOne();
+        final AppUser currentUser = getAppUserIfPresent();
         final Collection<Integer> loanStatuses = new ArrayList<>(Arrays.asList(LoanStatus.SUBMITTED_AND_PENDING_APPROVAL.getValue(),
                 LoanStatus.APPROVED.getValue(), LoanStatus.ACTIVE.getValue()));
         final Collection<Integer> loanTypes = new ArrayList<>(Arrays.asList(AccountType.GROUP.getValue(), AccountType.JLG.getValue()));
@@ -2246,11 +2255,29 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
         final List<Loan> loans = this.loanRepository.findByIdsAndLoanStatusAndLoanType(loanIds, loanStatuses, loanTypes);
         List<Holiday> holidays = null;
         // loop through each loan to reschedule the repayment dates
+        final List<Long> existingTransactionIds = new ArrayList<>();
+        final List<Long> existingReversedTransactionIds = new ArrayList<>();
         for (final Loan loan : loans) {
             if (loan != null) {
                 if (loan.repaymentScheduleDetail().isInterestRecalculationEnabled()) {
-                    final String defaultUserMessage = "Meeting calendar type update is not supported";
-                    throw new CalendarParameterUpdateNotSupportedException("jlg.loan.recalculation", defaultUserMessage);
+                    /*final String defaultUserMessage = "Meeting calendar type update is not supported";
+                    throw new CalendarParameterUpdateNotSupportedException("jlg.loan.recalculation", defaultUserMessage);*/
+                	if(newMeetingDate != null && !newMeetingDate.equals("")){
+                        Integer rescheduleFromInstallment = null;
+                        Date rescheduleFromDate = null;
+                        LoanRepaymentScheduleInstallment installment = loan.getRepaymentScheduleInstallment(presentMeetingDate);
+                        if(installment == null){
+                        	final String defaultUserMessage = "repayment does not fall on Date " + presentMeetingDate + " for loan Id "+ loan.getId();
+                        	throw new MissingInstallmentDateException("jlg.loan.missing.installment", defaultUserMessage, null); 
+                        }
+                              rescheduleFromInstallment = installment.getInstallmentNumber();
+                              rescheduleFromDate = presentMeetingDate.toDate();
+                              LoanRescheduleRequest loanRescheduleRequest = LoanRescheduleRequest.instance(loan,
+                                      LoanStatus.APPROVED.getValue(), rescheduleFromInstallment, null, null,
+                                      rescheduleFromDate, newMeetingDate.toDate(), null, null, null, null,
+                                      null, DateUtils.getDateOfTenant(), getAppUserIfPresent(), null, null, null, null);
+                           loan.loanRescheduleRequests().add(loanRescheduleRequest);
+                	}
                 }
                 holidays = this.holidayRepository.findByOfficeIdAndGreaterThanDate(loan.getOfficeId(), loan.getDisbursementDate().toDate());
 
@@ -2261,7 +2288,14 @@ public class LoanWritePlatformServiceJpaRepositoryImpl implements LoanWritePlatf
                     loan.updateLoanRepaymentScheduleDates(calendar.getStartDateLocalDate(), calendar.getRecurrence(), isHolidayEnabled,
                             holidays, workingDays);
                 }
-
+                if (loan.repaymentScheduleDetail().isInterestRecalculationEnabled()) {
+                	ScheduleGeneratorDTO scheduleGeneratorDTO = loanAccountDomainService.buildScheduleGeneratorDTO(loan);
+                	loan.setHelpers(null, this.loanSummaryWrapper, this.transactionProcessingStrategy);
+                	loan.recalculateScheduleFromLastTransaction(scheduleGeneratorDTO, existingTransactionIds, existingReversedTransactionIds, currentUser);
+                	this.loanScheduleHistoryWritePlatformService.createAndSaveLoanScheduleArchive(loan.fetchRepaymentScheduleInstallments(),
+                			loan, null);
+                }
+                
                 saveLoanWithDataIntegrityViolationChecks(loan);
             }
         }
