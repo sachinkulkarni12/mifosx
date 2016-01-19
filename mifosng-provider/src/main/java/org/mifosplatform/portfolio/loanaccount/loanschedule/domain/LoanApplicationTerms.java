@@ -274,7 +274,7 @@ public final class LoanApplicationTerms {
             final CalendarInstance compoundingCalendarInstance, final RecalculationFrequencyType compoundingFrequencyType,
             final BigDecimal principalThresholdForLastInstalment, final Integer installmentAmountInMultiplesOf,
             final LoanPreClosureInterestCalculationStrategy loanPreClosureInterestCalculationStrategy, BigDecimal approvedAmount,
-            final BigDecimal annualNominalInterestRate, final List<LoanTermVariationsData> loanTermVariations) {
+            final BigDecimal annualNominalInterestRate, final List<LoanTermVariationsData> loanTermVariations, final Calendar calendar) {
 
         final Integer numberOfRepayments = loanProductRelatedDetail.getNumberOfRepayments();
         final Integer repaymentEvery = loanProductRelatedDetail.getRepayEvery();
@@ -302,7 +302,7 @@ public final class LoanApplicationTerms {
             rescheduleStrategyMethod = interestRecalculationDetails.getRescheduleStrategyMethod();
             interestRecalculationCompoundingMethod = interestRecalculationDetails.getInterestRecalculationCompoundingMethod();
         }
-        final Calendar loanCalendar = null;
+        /*final Calendar loanCalendar = null;*/
         return new LoanApplicationTerms(applicationCurrency, loanTermFrequency, loanTermPeriodFrequencyType, numberOfRepayments,
                 repaymentEvery, repaymentPeriodFrequencyType, null, null, amortizationMethod, interestMethod, interestRatePerPeriod,
                 interestRatePeriodFrequencyType, annualNominalInterestRate, interestCalculationPeriodMethod, principalMoney,
@@ -311,7 +311,7 @@ public final class LoanApplicationTerms {
                 disbursementDatas, maxOutstandingBalance, loanProductRelatedDetail.getGraceOnDueDate(), daysInMonthType, daysInYearType,
                 isInterestRecalculationEnabled, rescheduleStrategyMethod, interestRecalculationCompoundingMethod, restCalendarInstance,
                 recalculationFrequencyType, compoundingCalendarInstance, compoundingFrequencyType, principalThresholdForLastInstalment,
-                installmentAmountInMultiplesOf, loanPreClosureInterestCalculationStrategy, loanCalendar, approvedAmount, loanTermVariations);
+                installmentAmountInMultiplesOf, loanPreClosureInterestCalculationStrategy, calendar, approvedAmount, loanTermVariations);
     }
 
     public static LoanApplicationTerms assembleFrom(final LoanApplicationTerms applicationTerms,

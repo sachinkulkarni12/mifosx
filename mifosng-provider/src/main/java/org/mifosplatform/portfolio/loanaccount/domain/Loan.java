@@ -106,7 +106,6 @@ import org.mifosplatform.portfolio.loanaccount.loanschedule.domain.LoanScheduleG
 import org.mifosplatform.portfolio.loanaccount.loanschedule.domain.LoanScheduleGeneratorFactory;
 import org.mifosplatform.portfolio.loanaccount.loanschedule.domain.LoanScheduleModel;
 import org.mifosplatform.portfolio.loanaccount.loanschedule.domain.LoanScheduleModelPeriod;
-import org.mifosplatform.portfolio.loanaccount.rescheduleloan.domain.LoanRescheduleRequest;
 import org.mifosplatform.portfolio.loanproduct.LoanProductConstants;
 import org.mifosplatform.portfolio.loanproduct.domain.AmortizationMethod;
 import org.mifosplatform.portfolio.loanproduct.domain.InterestCalculationPeriodMethod;
@@ -2582,6 +2581,7 @@ public class Loan extends AbstractPersistable<Long> {
         InterestRecalculationCompoundingMethod compoundingMethod = null;
         RecalculationFrequencyType compoundingFrequencyType = null;
         LoanRescheduleStrategyMethod rescheduleStrategyMethod = null;
+        Calendar calendar = null;
         if (this.repaymentScheduleDetail().isInterestRecalculationEnabled()) {
             restCalendarInstance = scheduleGeneratorDTO.getCalendarInstanceForInterestRecalculation();
             compoundingCalendarInstance = scheduleGeneratorDTO.getCompoundingCalendarInstance();
@@ -2589,7 +2589,9 @@ public class Loan extends AbstractPersistable<Long> {
             compoundingMethod = this.loanInterestRecalculationDetails.getInterestRecalculationCompoundingMethod();
             compoundingFrequencyType = this.loanInterestRecalculationDetails.getCompoundingFrequencyType();
             rescheduleStrategyMethod = this.loanInterestRecalculationDetails.getRescheduleStrategyMethod();
+            calendar = scheduleGeneratorDTO.getCalendar();
         }
+        
 
         BigDecimal annualNominalInterestRate = this.loanRepaymentScheduleDetail.getAnnualNominalInterestRate();
         FloatingRateDTO floatingRateDTO = scheduleGeneratorDTO.getFloatingRateDTO();
@@ -2603,7 +2605,7 @@ public class Loan extends AbstractPersistable<Long> {
                 this.maxOutstandingLoanBalance, getInterestChargedFromDate(), this.loanProduct.getPrincipalThresholdForLastInstallment(),
                 this.loanProduct.getInstallmentAmountInMultiplesOf(), recalculationFrequencyType, restCalendarInstance, compoundingMethod,
                 compoundingCalendarInstance, compoundingFrequencyType, this.loanProduct.preCloseInterestCalculationStrategy(),
-                rescheduleStrategyMethod, getApprovedPrincipal(), annualNominalInterestRate, loanTermVariations);
+                rescheduleStrategyMethod, calendar, getApprovedPrincipal(), annualNominalInterestRate, loanTermVariations);
 
         final LoanScheduleModel loanSchedule = loanScheduleGenerator.generate(mc, loanApplicationTerms, charges(),
                 scheduleGeneratorDTO.getHolidayDetailDTO());
@@ -5009,7 +5011,7 @@ public class Loan extends AbstractPersistable<Long> {
 
         final LoanApplicationTerms loanApplicationTerms = constructLoanApplicationTerms(generatorDTO.getApplicationCurrency(),
                 generatorDTO.getCalculatedRepaymentsStartingFromDate(), generatorDTO.getCalendarInstanceForInterestRecalculation(),
-                generatorDTO.getCompoundingCalendarInstance(), generatorDTO.getFloatingRateDTO());
+                generatorDTO.getCompoundingCalendarInstance(), generatorDTO.getFloatingRateDTO(), generatorDTO.getCalendar());
 
         final LoanRepaymentScheduleTransactionProcessor loanRepaymentScheduleTransactionProcessor = this.transactionProcessorFactory
                 .determineProcessor(this.transactionProcessingStrategy);
@@ -5021,7 +5023,7 @@ public class Loan extends AbstractPersistable<Long> {
 
     public LoanApplicationTerms constructLoanApplicationTerms(final ApplicationCurrency applicationCurrency,
             final LocalDate calculatedRepaymentsStartingFromDate, final CalendarInstance calendarInstanceForInterestRecalculation,
-            final CalendarInstance compoundingCalendarInstance, final FloatingRateDTO floatingRateDTO) {
+            final CalendarInstance compoundingCalendarInstance, final FloatingRateDTO floatingRateDTO, final Calendar calendar) {
         final Integer loanTermFrequency = this.termFrequency;
         final PeriodFrequencyType loanTermPeriodFrequencyType = PeriodFrequencyType.fromInt(this.termPeriodFrequencyType);
         final List<DisbursementData> disbursementData = new ArrayList<>();
@@ -5044,7 +5046,7 @@ public class Loan extends AbstractPersistable<Long> {
                 recalculationFrequencyType, compoundingCalendarInstance, compoundingFrequencyType,
                 this.loanProduct.getPrincipalThresholdForLastInstallment(), this.loanProduct.getInstallmentAmountInMultiplesOf(),
                 this.loanProduct.preCloseInterestCalculationStrategy(), getApprovedPrincipal(), annualNominalInterestRate,
-                loanTermVariations);
+                loanTermVariations, calendar);
         return loanApplicationTerms;
     }
 

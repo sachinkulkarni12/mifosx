@@ -5,6 +5,13 @@
  */
 package org.mifosplatform.portfolio.loanaccount.loanschedule.domain;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Set;
+import java.util.Collections;
+
+
 import org.joda.time.Days;
 import org.joda.time.LocalDate;
 import org.joda.time.Months;
@@ -14,10 +21,12 @@ import org.mifosplatform.organisation.holiday.service.HolidayUtil;
 import org.mifosplatform.organisation.workingdays.domain.RepaymentRescheduleType;
 import org.mifosplatform.organisation.workingdays.service.WorkingDaysUtil;
 import org.mifosplatform.portfolio.calendar.domain.Calendar;
+import org.mifosplatform.portfolio.calendar.domain.CalendarHistory;
 import org.mifosplatform.portfolio.calendar.service.CalendarUtils;
 import org.mifosplatform.portfolio.common.domain.DayOfWeekType;
 import org.mifosplatform.portfolio.common.domain.PeriodFrequencyType;
 import org.mifosplatform.portfolio.loanaccount.data.HolidayDetailDTO;
+
 
 public class DefaultScheduledDateGenerator implements ScheduledDateGenerator {
 
@@ -50,13 +59,27 @@ public class DefaultScheduledDateGenerator implements ScheduledDateGenerator {
                     loanApplicationTerms.getWeekDayType());
             dueRepaymentPeriodDate = CalendarUtils.adjustDate(dueRepaymentPeriodDate, loanApplicationTerms.getSeedDate(),
                     loanApplicationTerms.getRepaymentPeriodFrequencyType());
-            if (currentCalendar != null) {
+            
+            LocalDate calendarEndDate = getCalendarEndDateFromCalendarHistory(currentCalendar, dueRepaymentPeriodDate);
+            
+            if (currentCalendar != null && calendarEndDate != null && calendarEndDate.equals(dueRepaymentPeriodDate)) {
                 // If we have currentCalendar object, this means there is a
                 // calendar associated with
                 // the loan, and we should use it in order to calculate next
                 // repayment
-                LocalDate seedDate = currentCalendar.getStartDateLocalDate();
-                String reccuringString = currentCalendar.getRecurrence();
+            	
+            	//get the start date from the calendar history
+            	CalendarHistory calendarHistory  = getStartDateFromCalendarHistory(currentCalendar, dueRepaymentPeriodDate);
+            	LocalDate seedDate = null;
+            	String reccuringString = null;
+            	if(calendarHistory == null /*|| currentCalendar.getStartDateLocalDate().isBefore(calendarHistory.getEndDateLocalDate())*/){
+            		seedDate = currentCalendar.getStartDateLocalDate();
+            		reccuringString = currentCalendar.getRecurrence();
+            	}else{
+            		seedDate = calendarHistory.getStartDateLocalDate();
+            		reccuringString = calendarHistory.getRecurrence();
+            	}
+                
                 dueRepaymentPeriodDate = CalendarUtils.getNewRepaymentMeetingDate(reccuringString, seedDate, dueRepaymentPeriodDate,
                         loanApplicationTerms.getRepaymentEvery(),
                         CalendarUtils.getMeetingFrequencyFromPeriodFrequencyType(loanApplicationTerms.getLoanTermPeriodFrequencyType()),
@@ -65,6 +88,46 @@ public class DefaultScheduledDateGenerator implements ScheduledDateGenerator {
         }
         return dueRepaymentPeriodDate;
     }
+
+	private CalendarHistory getStartDateFromCalendarHistory(Calendar currentCalendar, LocalDate dueRepaymentPeriodDate) {
+		List<CalendarHistory> calendarHistoryList = sortedCalendarHistory(currentCalendar);
+		CalendarHistory calendarHistory  = null;
+		for (CalendarHistory history : calendarHistoryList) {
+			if(history.getEndDateLocalDate().isAfter(dueRepaymentPeriodDate)){
+				calendarHistory = history;
+				break;
+			}
+		}
+		return calendarHistory;
+		
+	}
+
+	private LocalDate getCalendarEndDateFromCalendarHistory(Calendar currentCalendar, LocalDate dueRepaymentPeriodDate) {
+		LocalDate calendarEndDate = null;
+		if (currentCalendar != null) {
+			List<CalendarHistory> calendarHistorys = sortedCalendarHistory(currentCalendar);
+			for (CalendarHistory calendarHistory : calendarHistorys) {
+				if (calendarHistory.getEndDateLocalDate().equals(dueRepaymentPeriodDate)) {
+					calendarEndDate = calendarHistory.getEndDateLocalDate();
+					break;
+				}
+			}
+		}
+		return calendarEndDate;
+	}
+
+	private List<CalendarHistory> sortedCalendarHistory(Calendar currentCalendar) {
+		Set<CalendarHistory> calendarHistorys = currentCalendar.getCalendarHistory();
+		List<CalendarHistory> calendarHistoryList = new ArrayList<CalendarHistory>(calendarHistorys);
+		final Comparator<CalendarHistory> orderByDate = new Comparator<CalendarHistory>() {
+			public int compare(CalendarHistory calendarHistory1, CalendarHistory calendarHistory2) {
+				return calendarHistory1.getEndDateLocalDate().compareTo(calendarHistory2.getEndDateLocalDate());
+			}
+		};
+		Collections.sort(calendarHistoryList, orderByDate);
+		return calendarHistoryList;
+	}
+	
 
     @Override
     public LocalDate adjustRepaymentDate(final LocalDate dueRepaymentPeriodDate, final LoanApplicationTerms loanApplicationTerms,

@@ -9,6 +9,8 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,8 +42,10 @@ import org.mifosplatform.portfolio.account.domain.AccountTransferRepository;
 import org.mifosplatform.portfolio.account.domain.AccountTransferTransaction;
 import org.mifosplatform.portfolio.calendar.domain.Calendar;
 import org.mifosplatform.portfolio.calendar.domain.CalendarEntityType;
+import org.mifosplatform.portfolio.calendar.domain.CalendarHistory;
 import org.mifosplatform.portfolio.calendar.domain.CalendarInstance;
 import org.mifosplatform.portfolio.calendar.domain.CalendarInstanceRepository;
+import org.mifosplatform.portfolio.calendar.domain.CalendarRepository;
 import org.mifosplatform.portfolio.calendar.service.CalendarUtils;
 import org.mifosplatform.portfolio.client.domain.Client;
 import org.mifosplatform.portfolio.client.exception.ClientNotActiveException;
@@ -93,6 +97,7 @@ public class LoanAccountDomainServiceJpa implements LoanAccountDomainService {
     private final PlatformSecurityContext context;
     private final BusinessEventNotifierService businessEventNotifierService;
     private final FloatingRatesReadPlatformService floatingRatesReadPlatformService;
+    private final CalendarRepository calendarRepository;
 
     @Autowired
     public LoanAccountDomainServiceJpa(final LoanAssembler loanAccountAssembler, final LoanRepository loanRepository,
@@ -107,7 +112,8 @@ public class LoanAccountDomainServiceJpa implements LoanAccountDomainService {
             final LoanRepaymentScheduleInstallmentRepository repaymentScheduleInstallmentRepository,
             final LoanAccrualPlatformService loanAccrualPlatformService, final PlatformSecurityContext context,
             final BusinessEventNotifierService businessEventNotifierService,
-            final FloatingRatesReadPlatformService floatingRatesReadPlatformService) {
+            final FloatingRatesReadPlatformService floatingRatesReadPlatformService,
+            final CalendarRepository calendarRepository) {
         this.loanAccountAssembler = loanAccountAssembler;
         this.loanRepository = loanRepository;
         this.loanTransactionRepository = loanTransactionRepository;
@@ -126,6 +132,7 @@ public class LoanAccountDomainServiceJpa implements LoanAccountDomainService {
         this.context = context;
         this.businessEventNotifierService = businessEventNotifierService;
         this.floatingRatesReadPlatformService = floatingRatesReadPlatformService;
+        this.calendarRepository = calendarRepository;
     }
 
     @Transactional
@@ -498,6 +505,23 @@ public class LoanAccountDomainServiceJpa implements LoanAccountDomainService {
         final Calendar calendar = calendarInstance == null ? null : calendarInstance.getCalendar();
         LocalDate calculatedRepaymentsStartingFromDate = loan.getExpectedFirstRepaymentOnDate();
         if (calendar != null) {// sync repayments
+        	
+        	if(!calendar.getCalendarHistory().isEmpty()){
+        		Set<CalendarHistory> calendarHistories = calendar.getCalendarHistory();
+        		List<CalendarHistory> set = new ArrayList<CalendarHistory>(calendarHistories);
+    			final Comparator<CalendarHistory> orderByDate = new Comparator<CalendarHistory>() {
+    				public int compare(CalendarHistory e1, CalendarHistory e2) {
+    					return e1.getEndDateLocalDate().compareTo(
+    							e2.getEndDateLocalDate());
+    				}
+    			};
+    			Collections.sort(set, orderByDate);
+        		for(CalendarHistory calendarHistory : set){
+        			calculatedRepaymentsStartingFromDate = calendarHistory.getStartDateLocalDate();
+        			break;
+        		}
+        		return calculatedRepaymentsStartingFromDate;
+        	}
 
             // TODO: AA - user provided first repayment date takes precedence
             // over recalculated meeting date
@@ -601,6 +625,7 @@ public class LoanAccountDomainServiceJpa implements LoanAccountDomainService {
         ApplicationCurrency applicationCurrency = this.applicationCurrencyRepository.findOneWithNotFoundDetection(currency);
         final CalendarInstance calendarInstance = this.calendarInstanceRepository.findCalendarInstaneByEntityId(loan.getId(),
                 CalendarEntityType.LOANS.getValue());
+        final Calendar calendar = calendarInstance.getCalendar();
         LocalDate calculatedRepaymentsStartingFromDate = this.getCalculatedRepaymentsStartingFromDate(loan.getDisbursementDate(), loan,
                 calendarInstance);
         final boolean isHolidayEnabled = this.configurationDomainService.isRescheduleRepaymentsOnHolidaysEnabled();
@@ -622,7 +647,7 @@ public class LoanAccountDomainServiceJpa implements LoanAccountDomainService {
         }
         FloatingRateDTO floatingRateDTO = constructFloatingRateDTO(loan);
         ScheduleGeneratorDTO scheduleGeneratorDTO = new ScheduleGeneratorDTO(loanScheduleFactory, applicationCurrency,
-                calculatedRepaymentsStartingFromDate, holidayDetailDTO, restCalendarInstance, compoundingCalendarInstance, floatingRateDTO);
+                calculatedRepaymentsStartingFromDate, holidayDetailDTO, restCalendarInstance, compoundingCalendarInstance, floatingRateDTO, calendar);
 
         return scheduleGeneratorDTO;
     }

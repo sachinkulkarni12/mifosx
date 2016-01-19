@@ -28,6 +28,7 @@ import org.mifosplatform.organisation.monetary.domain.MonetaryCurrency;
 import org.mifosplatform.organisation.monetary.domain.Money;
 import org.mifosplatform.organisation.monetary.service.CurrencyReadPlatformService;
 import org.mifosplatform.portfolio.accountdetails.domain.AccountType;
+import org.mifosplatform.portfolio.calendar.domain.Calendar;
 import org.mifosplatform.portfolio.calendar.domain.CalendarEntityType;
 import org.mifosplatform.portfolio.calendar.domain.CalendarInstance;
 import org.mifosplatform.portfolio.calendar.domain.CalendarInstanceRepository;
@@ -282,6 +283,9 @@ public class LoanScheduleCalculationPlatformServiceImpl implements LoanScheduleC
         final ApplicationCurrency applicationCurrency = this.applicationCurrencyRepository.findOneWithNotFoundDetection(currency);
         final CalendarInstance calendarInstance = this.calendarInstanceRepository.findCalendarInstaneByEntityId(loan.getId(),
                 CalendarEntityType.LOANS.getValue());
+        // added by sachin
+        final Calendar calendar = calendarInstance.getCalendar();
+        // end
         final CalendarInstance restCalendarInstance = calendarInstanceRepository.findCalendarInstaneByEntityId(
                 loan.loanInterestRecalculationDetailId(), CalendarEntityType.LOAN_RECALCULATION_REST_DETAIL.getValue());
         final CalendarInstance compoundingCalendarInstance = calendarInstanceRepository.findCalendarInstaneByEntityId(
@@ -290,7 +294,7 @@ public class LoanScheduleCalculationPlatformServiceImpl implements LoanScheduleC
                 loan.getDisbursementDate(), loan, calendarInstance);
         FloatingRateDTO floatingRateDTO = constructFloatingRateDTO(loan);
         LoanApplicationTerms loanApplicationTerms = loan.constructLoanApplicationTerms(applicationCurrency,
-                calculatedRepaymentsStartingFromDate, restCalendarInstance, compoundingCalendarInstance, floatingRateDTO);
+                calculatedRepaymentsStartingFromDate, restCalendarInstance, compoundingCalendarInstance, floatingRateDTO, calendar);
         return loanApplicationTerms;
     }
 

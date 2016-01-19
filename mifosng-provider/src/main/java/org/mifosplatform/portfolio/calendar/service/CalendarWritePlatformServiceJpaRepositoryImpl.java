@@ -9,8 +9,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.joda.time.LocalDate;
 import org.joda.time.format.DateTimeFormat;
@@ -275,12 +278,14 @@ public class CalendarWritePlatformServiceJpaRepositoryImpl implements CalendarWr
         if (!changes.isEmpty()) {
             // update calendar history table only if there is a change in
             // calendar start date.
-            if (currentDate.isAfter(new LocalDate(oldStartDate))) {
+            //if (currentDate.isAfter(new LocalDate(oldStartDate))) {
                 final Date endDate = calendarForUpdate.getStartDateLocalDate().minusDays(1).toDate();
                 calendarHistory.updateEndDate(endDate);
                 this.calendarHistoryRepository.save(calendarHistory);
-            }
-
+            //}
+                Set<CalendarHistory> history = calendarForUpdate.getCalendarHistory();
+                history.add(calendarHistory);
+                calendarForUpdate.updateCalendarHistory(history);    
             this.calendarRepository.saveAndFlush(calendarForUpdate);
 
             if (this.configurationDomainService.isRescheduleFutureRepaymentsEnabled() && calendarForUpdate.isRepeating()) {

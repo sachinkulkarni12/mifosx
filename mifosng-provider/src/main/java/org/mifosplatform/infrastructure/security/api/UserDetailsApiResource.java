@@ -28,7 +28,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.context.annotation.Scope;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.oauth2.provider.token.ResourceServerTokenServices;
+/*import org.springframework.security.oauth2.provider.token.ResourceServerTokenServices;*/
 import org.springframework.stereotype.Component;
 
 /*
@@ -40,15 +40,15 @@ import org.springframework.stereotype.Component;
 @Scope("singleton")
 public class UserDetailsApiResource {
 
-    private final ResourceServerTokenServices tokenServices;
+    /*private final ResourceServerTokenServices tokenServices;*/
     private final ToApiJsonSerializer<AuthenticatedOauthUserData> apiJsonSerializerService;
     private final SpringSecurityPlatformSecurityContext springSecurityPlatformSecurityContext;
 
     @Autowired
-    public UserDetailsApiResource(@Qualifier("tokenServices") final ResourceServerTokenServices tokenServices,
+    public UserDetailsApiResource(/*@Qualifier("tokenServices") final ResourceServerTokenServices tokenServices,*/
             final ToApiJsonSerializer<AuthenticatedOauthUserData> apiJsonSerializerService,
             final SpringSecurityPlatformSecurityContext springSecurityPlatformSecurityContext) {
-        this.tokenServices = tokenServices;
+        /*this.tokenServices = tokenServices;*/
         this.apiJsonSerializerService = apiJsonSerializerService;
         this.springSecurityPlatformSecurityContext = springSecurityPlatformSecurityContext;
     }
@@ -57,7 +57,7 @@ public class UserDetailsApiResource {
     @Produces({ MediaType.APPLICATION_JSON })
     public String fetchAuthenticatedUserData(@QueryParam("access_token") final String accessToken) {
 
-        final Authentication authentication = this.tokenServices.loadAuthentication(accessToken);
+        final Authentication authentication = null;/*this.tokenServices.loadAuthentication(accessToken);*/
         if (authentication.isAuthenticated()) {
             final AppUser principal = (AppUser) authentication.getPrincipal();
 
