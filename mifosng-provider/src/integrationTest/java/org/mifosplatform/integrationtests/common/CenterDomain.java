@@ -7,6 +7,7 @@ package org.mifosplatform.integrationtests.common;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 
 import org.mifosplatform.infrastructure.core.service.DateUtils;
 

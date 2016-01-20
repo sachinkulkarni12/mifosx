@@ -6,7 +6,11 @@
 package org.mifosplatform.portfolio.loanaccount.service;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Set;
 
 import org.joda.time.LocalDate;
 import org.mifosplatform.infrastructure.configuration.domain.ConfigurationDomainService;
@@ -20,6 +24,7 @@ import org.mifosplatform.organisation.workingdays.domain.WorkingDays;
 import org.mifosplatform.organisation.workingdays.domain.WorkingDaysRepositoryWrapper;
 import org.mifosplatform.portfolio.calendar.domain.Calendar;
 import org.mifosplatform.portfolio.calendar.domain.CalendarEntityType;
+import org.mifosplatform.portfolio.calendar.domain.CalendarHistory;
 import org.mifosplatform.portfolio.calendar.domain.CalendarInstance;
 import org.mifosplatform.portfolio.calendar.domain.CalendarInstanceRepository;
 import org.mifosplatform.portfolio.calendar.service.CalendarUtils;
@@ -75,6 +80,10 @@ public class LoanUtilService {
         ApplicationCurrency applicationCurrency = this.applicationCurrencyRepository.findOneWithNotFoundDetection(currency);
         final CalendarInstance calendarInstance = this.calendarInstanceRepository.findCalendarInstaneByEntityId(loan.getId(),
                 CalendarEntityType.LOANS.getValue());
+        Calendar calendar = null;
+        if (calendarInstance != null) {
+            calendar = calendarInstance.getCalendar();
+        }
         LocalDate calculatedRepaymentsStartingFromDate = this.getCalculatedRepaymentsStartingFromDate(loan.getDisbursementDate(), loan,
                 calendarInstance);
         CalendarInstance restCalendarInstance = null;
@@ -90,7 +99,7 @@ public class LoanUtilService {
         FloatingRateDTO floatingRateDTO = constructFloatingRateDTO(loan);
         ScheduleGeneratorDTO scheduleGeneratorDTO = new ScheduleGeneratorDTO(loanScheduleFactory, applicationCurrency,
                 calculatedRepaymentsStartingFromDate, holidayDetails, restCalendarInstance, compoundingCalendarInstance, recalculateFrom,
-                overdurPenaltyWaitPeriod, floatingRateDTO);
+                overdurPenaltyWaitPeriod, floatingRateDTO, calendar);
 
         return scheduleGeneratorDTO;
     }
@@ -148,6 +157,23 @@ public class LoanUtilService {
     private LocalDate calculateRepaymentStartingFromDate(final LocalDate actualDisbursementDate, final Loan loan, final Calendar calendar) {
         LocalDate calculatedRepaymentsStartingFromDate = loan.getExpectedFirstRepaymentOnDate();
         if (calendar != null) {// sync repayments
+
+            if (!calendar.getCalendarHistory().isEmpty()) {
+                Set<CalendarHistory> calendarHistories = calendar.getCalendarHistory();
+                List<CalendarHistory> set = new ArrayList<CalendarHistory>(calendarHistories);
+                final Comparator<CalendarHistory> orderByDate = new Comparator<CalendarHistory>() {
+
+                    public int compare(CalendarHistory e1, CalendarHistory e2) {
+                        return e1.getEndDateLocalDate().compareTo(e2.getEndDateLocalDate());
+                    }
+                };
+                Collections.sort(set, orderByDate);
+                for (CalendarHistory calendarHistory : set) {
+                    calculatedRepaymentsStartingFromDate = calendarHistory.getStartDateLocalDate();
+                    break;
+                }
+                return calculatedRepaymentsStartingFromDate;
+            }
 
             // TODO: AA - user provided first repayment date takes precedence
             // over recalculated meeting date

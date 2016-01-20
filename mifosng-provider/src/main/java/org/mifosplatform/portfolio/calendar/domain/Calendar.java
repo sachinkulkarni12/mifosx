@@ -12,6 +12,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -83,7 +84,7 @@ public class Calendar extends AbstractAuditableCustom<AppUser, Long> {
 
     @OneToMany(fetch = FetchType.EAGER)
     @JoinColumn(name = "calendar_id")
-    private final Set<CalendarHistory> calendarHistory = new HashSet<>();
+    private Set<CalendarHistory> calendarHistory = new LinkedHashSet<>();
 
     protected Calendar() {
 
@@ -568,5 +569,13 @@ public class Calendar extends AbstractAuditableCustom<AppUser, Long> {
         this.recurrence = newRecurrence;
         this.startDate = startDate.toDate();
         this.endDate = endDate.toDate();
+    }
+    
+    public Set<CalendarHistory> getCalendarHistory(){
+    	return this.calendarHistory;
+    }
+    
+    public void updateCalendarHistory(final Set<CalendarHistory> calendarHistory){
+    	this.calendarHistory = calendarHistory;
     }
 }

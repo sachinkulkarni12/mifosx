@@ -33,6 +33,7 @@ import org.mifosplatform.organisation.workingdays.domain.WorkingDays;
 import org.mifosplatform.organisation.workingdays.service.WorkingDaysUtil;
 import org.mifosplatform.portfolio.calendar.domain.Calendar;
 import org.mifosplatform.portfolio.calendar.domain.CalendarFrequencyType;
+import org.mifosplatform.portfolio.calendar.domain.CalendarHistory;
 import org.mifosplatform.portfolio.calendar.domain.CalendarWeekDaysType;
 import org.mifosplatform.portfolio.common.domain.PeriodFrequencyType;
 
@@ -351,6 +352,7 @@ public class CalendarUtils {
         if (recur == null) { return null; }
         LocalDate startDate = disbursementDate;
         final LocalDate seedDate = calendar.getStartDateLocalDate();
+        
         if (isValidRedurringDate(calendar.getRecurrence(), seedDate, startDate)) {
             startDate = startDate.plusDays(1);
         }
