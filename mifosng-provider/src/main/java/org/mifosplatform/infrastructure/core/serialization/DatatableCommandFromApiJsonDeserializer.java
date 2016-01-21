@@ -30,7 +30,7 @@ import com.google.gson.reflect.TypeToken;
 public class DatatableCommandFromApiJsonDeserializer {
 
     private final static String DATATABLE_NAME_REGEX_PATTERN = "^[a-zA-Z][a-zA-Z0-9\\-_\\s]{0,48}[a-zA-Z0-9]$";
-    private final static String DATATABLE_COLUMN_NAME_REGEX_PATTERN = "^[a-zA-Z][a-zA-Z0-9\\-_\\s]{0,}[a-zA-Z0-9]$";
+    private final static String DATATABLE_COLUMN_NAME_REGEX_PATTERN = "^[a-zA-Z][a-zA-Z0-9\\-_\\/\\s]{0,}[a-zA-Z0-9]$";
     /**
      * The parameters supported for this command.
      */
@@ -169,7 +169,7 @@ public class DatatableCommandFromApiJsonDeserializer {
 
                 final String newName = this.fromApiJsonHelper.extractStringNamed("newName", column);
                 baseDataValidator.reset().parameter("newName").value(newName).ignoreIfNull().notBlank().notExceedingLengthOf(50)
-                        .isNotOneOfTheseValues("id", fkColumnName).matchesRegularExpression(DATATABLE_NAME_REGEX_PATTERN);
+                        .isNotOneOfTheseValues("id", fkColumnName).matchesRegularExpression(DATATABLE_COLUMN_NAME_REGEX_PATTERN);
 
                 if (this.fromApiJsonHelper.parameterExists("length", column)) {
                     final String lengthStr = this.fromApiJsonHelper.extractStringNamed("length", column);

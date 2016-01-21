@@ -86,7 +86,10 @@ public final class ResultsetColumnHeaderData {
                         + " - Column Name: " + this.columnName);
             }
         }
-
+        
+        if(this.columnName.equals("Village Name")){
+        	displayType = "CODEVALUE";
+        }
         this.columnDisplayType = displayType;
     }
 
