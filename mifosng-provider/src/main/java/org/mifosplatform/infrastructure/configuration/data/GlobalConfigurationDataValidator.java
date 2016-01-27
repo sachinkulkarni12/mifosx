@@ -9,6 +9,7 @@ import static org.mifosplatform.infrastructure.configuration.api.GlobalConfigura
 import static org.mifosplatform.infrastructure.configuration.api.GlobalConfigurationApiConstant.ENABLED;
 import static org.mifosplatform.infrastructure.configuration.api.GlobalConfigurationApiConstant.UPDATE_CONFIGURATION_DATA_PARAMETERS;
 import static org.mifosplatform.infrastructure.configuration.api.GlobalConfigurationApiConstant.VALUE;
+import static org.mifosplatform.infrastructure.configuration.api.GlobalConfigurationApiConstant.DATE_VALUE;
 
 import java.lang.reflect.Type;
 import java.util.ArrayList;
@@ -16,6 +17,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.lang.StringUtils;
+import org.joda.time.LocalDate;
 import org.mifosplatform.infrastructure.core.api.JsonCommand;
 import org.mifosplatform.infrastructure.core.data.ApiParameterError;
 import org.mifosplatform.infrastructure.core.data.DataValidatorBuilder;
@@ -57,6 +59,11 @@ public class GlobalConfigurationDataValidator {
         if (this.fromApiJsonHelper.parameterExists(VALUE, element)) {
             final Long valueStr = this.fromApiJsonHelper.extractLongNamed(VALUE, element);
             baseDataValidator.reset().parameter(ENABLED).value(valueStr).zeroOrPositiveAmount();
+        }
+        
+        if (this.fromApiJsonHelper.parameterExists(DATE_VALUE, element)) {
+            final LocalDate dateValue = this.fromApiJsonHelper.extractLocalDateNamed(DATE_VALUE, element);
+            baseDataValidator.reset().parameter(DATE_VALUE).value(dateValue).ignoreIfNull();
         }
 
         if (!dataValidationErrors.isEmpty()) { throw new PlatformApiDataValidationException(dataValidationErrors); }

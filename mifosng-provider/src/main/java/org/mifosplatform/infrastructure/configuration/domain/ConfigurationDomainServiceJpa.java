@@ -5,6 +5,8 @@
  */
 package org.mifosplatform.infrastructure.configuration.domain;
 
+import java.util.Date;
+
 import org.apache.commons.lang.StringUtils;
 import org.mifosplatform.infrastructure.cache.domain.CacheType;
 import org.mifosplatform.infrastructure.cache.domain.PlatformCache;
@@ -199,6 +201,20 @@ public class ConfigurationDomainServiceJpa implements ConfigurationDomainService
         final String propertyName = "backdate-penalties-enabled";
         final GlobalConfigurationProperty property = this.globalConfigurationRepository.findOneByNameWithNotFoundDetection(propertyName);
         return property.isEnabled();
+    }
+
+    @Override
+    public boolean isOrganisationstartDateEnable() {
+        final String propertyName = "organisation-start-date";
+        final GlobalConfigurationProperty property = this.globalConfigurationRepository.findOneByNameWithNotFoundDetection(propertyName);
+        return property.isEnabled();
+    }
+
+    @Override
+    public Date retriveOrganisationStartDate() {
+        final String propertyName = "organisation-start-date";
+        final GlobalConfigurationProperty property = this.globalConfigurationRepository.findOneByNameWithNotFoundDetection(propertyName);
+        return property.getDateValue();
     }
 
 }

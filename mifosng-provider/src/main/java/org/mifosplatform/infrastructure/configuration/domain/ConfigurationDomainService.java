@@ -5,6 +5,8 @@
  */
 package org.mifosplatform.infrastructure.configuration.domain;
 
+import java.util.Date;
+
 import org.mifosplatform.infrastructure.cache.domain.CacheType;
 
 public interface ConfigurationDomainService {
@@ -50,4 +52,8 @@ public interface ConfigurationDomainService {
     int getRoundingMode();
 
     boolean isBackdatePenaltiesEnabled();
+    
+    boolean isOrganisationstartDateEnable();
+    
+    Date retriveOrganisationStartDate();
 }

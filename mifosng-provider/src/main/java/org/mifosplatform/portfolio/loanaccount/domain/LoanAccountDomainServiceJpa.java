@@ -6,6 +6,7 @@
 package org.mifosplatform.portfolio.loanaccount.domain;
 
 import java.math.BigDecimal;
+import java.util.Date;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -424,6 +425,8 @@ public class LoanAccountDomainServiceJpa implements LoanAccountDomainService {
     @Override
     public void recalculateAccruals(Loan loan) {
         LocalDate accruedTill = loan.getAccruedTill();
+        boolean isOrganisationDateEnabled = this.configurationDomainService.isOrganisationstartDateEnable();
+        Date organisationStartDate = this.configurationDomainService.retriveOrganisationStartDate();
         if (!loan.isPeriodicAccrualAccountingEnabledOnLoanProduct() || !loan.repaymentScheduleDetail().isInterestRecalculationEnabled()
                 || accruedTill == null || loan.isNpa() || !loan.status().isActive()) { return; }
         Collection<LoanScheduleAccrualData> loanScheduleAccrualDatas = new ArrayList<>();
@@ -441,7 +444,7 @@ public class LoanAccountDomainServiceJpa implements LoanAccountDomainService {
         Set<LoanCharge> loanCharges = loan.charges();
 
         for (LoanRepaymentScheduleInstallment installment : installments) {
-            if (!accruedTill.isBefore(installment.getDueDate())
+            if (isOrganisationDateEnabled && new LocalDate(organisationStartDate).isBefore(installment.getDueDate()) && !accruedTill.isBefore(installment.getDueDate())
                     || (accruedTill.isAfter(installment.getFromDate()) && !accruedTill.isAfter(installment.getDueDate()))) {
                 BigDecimal dueDateFeeIncome = BigDecimal.ZERO;
                 BigDecimal dueDatePenaltyIncome = BigDecimal.ZERO;
