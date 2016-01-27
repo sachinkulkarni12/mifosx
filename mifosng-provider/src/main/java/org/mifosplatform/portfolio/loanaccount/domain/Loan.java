@@ -5017,6 +5017,7 @@ public class Loan extends AbstractPersistable<Long> {
         InterestRecalculationCompoundingMethod compoundingMethod = null;
         RecalculationFrequencyType compoundingFrequencyType = null;
         LoanRescheduleStrategyMethod rescheduleStrategyMethod = null;
+        Calendar calendar = null;
         if (this.repaymentScheduleDetail().isInterestRecalculationEnabled()) {
             restCalendarInstance = scheduleGeneratorDTO.getCalendarInstanceForInterestRecalculation();
             compoundingCalendarInstance = scheduleGeneratorDTO.getCompoundingCalendarInstance();
@@ -5024,6 +5025,7 @@ public class Loan extends AbstractPersistable<Long> {
             compoundingMethod = this.loanInterestRecalculationDetails.getInterestRecalculationCompoundingMethod();
             compoundingFrequencyType = this.loanInterestRecalculationDetails.getCompoundingFrequencyType();
             rescheduleStrategyMethod = this.loanInterestRecalculationDetails.getRescheduleStrategyMethod();
+            calendar = scheduleGeneratorDTO.getCalendar();
         }
 
         BigDecimal annualNominalInterestRate = this.loanRepaymentScheduleDetail.getAnnualNominalInterestRate();
@@ -5038,7 +5040,7 @@ public class Loan extends AbstractPersistable<Long> {
                 this.maxOutstandingLoanBalance, getInterestChargedFromDate(), this.loanProduct.getPrincipalThresholdForLastInstallment(),
                 this.loanProduct.getInstallmentAmountInMultiplesOf(), recalculationFrequencyType, restCalendarInstance, compoundingMethod,
                 compoundingCalendarInstance, compoundingFrequencyType, this.loanProduct.preCloseInterestCalculationStrategy(),
-                rescheduleStrategyMethod, getApprovedPrincipal(), annualNominalInterestRate, loanTermVariations);
+                rescheduleStrategyMethod, calendar, getApprovedPrincipal(), annualNominalInterestRate, loanTermVariations);
         return loanApplicationTerms;
     }
 
