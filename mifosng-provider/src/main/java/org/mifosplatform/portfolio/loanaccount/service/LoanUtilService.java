@@ -158,7 +158,7 @@ public class LoanUtilService {
         LocalDate calculatedRepaymentsStartingFromDate = loan.getExpectedFirstRepaymentOnDate();
         if (calendar != null) {// sync repayments
 
-            if (!calendar.getCalendarHistory().isEmpty()) {
+            if (calculatedRepaymentsStartingFromDate == null && !calendar.getCalendarHistory().isEmpty()) {
                 Set<CalendarHistory> calendarHistories = calendar.getCalendarHistory();
                 List<CalendarHistory> set = new ArrayList<CalendarHistory>(calendarHistories);
                 final Comparator<CalendarHistory> orderByDate = new Comparator<CalendarHistory>() {
